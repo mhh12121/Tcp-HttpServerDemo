@@ -26,7 +26,7 @@ func init() {
 	// tcpconn.SetReadDeadline(time.Now().Add(Util.TimeoutDuration))
 	factory := func() (net.Conn, error) { return net.Dial("tcp", Util.Tcpaddress+":"+Util.Tcpport) }
 	var err error
-	connpool, err = pool.NewChannelPool(5, 40, factory)
+	connpool, err = pool.NewChannelPool(10, 200, factory)
 	Util.FailFastCheckErr(err)
 	// now you can get a connection from the pool, if there is no connection
 	// available it will create a new one via the factory function.
@@ -246,15 +246,10 @@ func loginHandler(w http.ResponseWriter, r *http.Request) {
 		fmt.Println("front username:", username)
 		fmt.Println("front pwd:", password)
 
-		//set cookie//may use redis to save
-		// cookie := http.Cookie{Name: "username", Value: username, Expires: Util.CookieExpires, Path: "/"}
-		// http.SetCookie(w, &cookie)
-
 		//Wrap the data
 		//this token here may be destroyed
 		temptoken := GenerateToken(5)
 		tempuser := Util.User{Username: username, Password: password, Token: temptoken}
-
 		tmpdata := Util.ToServerData{Ctype: "login", HttpData: tempuser}
 
 		gob.Register(new(Util.User))
