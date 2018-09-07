@@ -15,12 +15,6 @@ type dbinstance struct {
 var db *sql.DB
 var ad = "root:12345678@/entrytask?charset=utf8"
 
-// type RealUser struct {
-// 	Username string
-// 	Nickname string
-// 	Avatar   string
-// }
-
 func InitDB() {
 	var err error
 	db, err = sql.Open("mysql", ad)

@@ -172,14 +172,14 @@ func homeHandle(conn net.Conn, username string, token interface{}) {
 	user, ok, err := dao.GetCacheInfo(username)
 	Util.FailSafeCheckErr("redis get cache fail:", err)
 	//cache still valid
-	if ok {
+	//
+	if ok && err == nil {
 		log.Println("tcp home handle cache get info okay", user)
 		gob.Register(new(Util.RealUser))
 		tohttp := &Util.ResponseFromServer{Success: true, TcpData: user}
-
 		encoder := gob.NewEncoder(conn)
 		errreturn := encoder.Encode(tohttp)
-		Util.FailSafeCheckErr("home handle encode fail", errreturn)
+		Util.FailSafeCheckErr("no this ", errreturn)
 		return
 	}
 

@@ -104,7 +104,7 @@ func main() {
 	// benchmarkLoginReq()
 	//over 100 crash
 	num := 2
-	concurrency := 5
+	concurrency := 120
 	elapsed := benchmarkLoginReq("http://localhost:8080/login", int32(num), int32(concurrency), true)
 	fmt.Printf("\tTotal Requests(%v) - Concurrency(%v) - Cost(%s) - QPS(%v/sec)\n",
 		num, concurrency, elapsed, math.Ceil(float64(1000)/(float64(elapsed)/1000000000)))

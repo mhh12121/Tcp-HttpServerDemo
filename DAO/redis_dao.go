@@ -85,7 +85,7 @@ func GetCacheInfo(username string) (*Util.RealUser, bool, error) {
 	if err != nil {
 		return nil, false, err
 	}
-	if val["valid"] != "0" {
+	if val["valid"] != "0" && len(val) != 0 {
 		tmpuser := &Util.RealUser{Username: username, Avatar: val["avatar"], Nickname: val["nickname"]}
 		return tmpuser, true, nil
 	}
