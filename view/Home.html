@@ -1,0 +1,62 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta http-equiv="X-UA-Compatible" content="ie=edge">
+    <title>Home</title>
+</head>
+<script src="https://ajax.googleapis.com/ajax/libs/jquery/1.12.4/jquery.min.js"></script>
+<body>
+    Hello, {{ .Nickname}}
+    {{ if .Avatar}}
+    <div>
+        <img src="/images/{{ .Avatar}}" alt="">
+    </div>
+    {{ end }}
+    
+    
+    <div>
+        <p>change profile:</p>
+        <form method="POST" action="http://localhost:8080/Home/upload" enctype="multipart/form-data">
+                <input type="file" name="profile" value="files">
+                <input type="submit" value="change!">
+        </form>
+    </div>
+    <div>
+        <p>change nickname:</p>
+        <form method="POST" action="http://localhost:8080/Home/change" >
+            <input id="newnickname" type="text" name="newnickname" placeholder="your new nickname!" maxlength="50">
+            <input id="changenickBtn" type="submit" value="submit!">
+        </form>
+    </div>
+    <div>
+    
+    </div>
+    <a id="logout" href="javascript:void(0)">logout</a>
+</body>
+<script>
+    let cnicknameBtn = $("#changenickBtn")
+    let newnickname = $("#newnickname")
+    let logoutBtn = $("#logout")
+    
+    logoutBtn.on('click',function(){
+        $.ajax({
+            method:"POST",
+            url:"/Home/logout",
+            data:{msg:"logout"},
+            dataType:"json",
+            success:function(rdata){
+                if (rdata.Ok==true){
+                    $(location).attr('href','http://localhost:8080/login');
+                }else{
+                    alert("something wrong");
+                }
+            },
+            error:function(err){
+                console.log(err);
+            }
+        })
+    })
+</script>
+</html>
