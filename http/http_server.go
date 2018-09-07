@@ -26,7 +26,7 @@ func init() {
 	// tcpconn.SetReadDeadline(time.Now().Add(Util.TimeoutDuration))
 	factory := func() (net.Conn, error) { return net.Dial("tcp", Util.Tcpaddress+":"+Util.Tcpport) }
 	var err error
-	connpool, err = pool.NewChannelPool(50, 200, factory)
+	connpool, err = pool.NewChannelPool(5, 40, factory)
 	Util.FailFastCheckErr(err)
 	// now you can get a connection from the pool, if there is no connection
 	// available it will create a new one via the factory function.

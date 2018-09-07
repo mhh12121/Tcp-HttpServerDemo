@@ -50,7 +50,7 @@ func handleAll(conn net.Conn) {
 		gob.Register(new(Util.ToServerData))
 		gob.Register(new(Util.InfoWithUsername))
 		// gob.Register(new(Util.Avatar))
-		//Decoder blocks here
+		//Decoder blocks here???
 		decoder := gob.NewDecoder(conn)
 		var data Util.ToServerData
 		err := decoder.Decode(&data)
