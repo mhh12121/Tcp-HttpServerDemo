@@ -3,9 +3,12 @@ package dao
 import (
 	"log"
 	"testing"
+
+	_ "github.com/go-sql-driver/mysql"
 )
 
 func TestCheck(t *testing.T) {
+	InitDB()
 	var tests = []struct {
 		username string
 		password string

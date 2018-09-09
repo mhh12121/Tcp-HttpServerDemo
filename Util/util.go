@@ -3,10 +3,18 @@ package Util
 import (
 	"crypto/md5"
 	"encoding/hex"
-	"fmt"
 	"strconv"
 	"time"
 )
+
+// func init() {
+// 	file, err := os.Open("../config/config.json")
+// 	if err != nil {
+// 		panic("file config wrong")
+// 	}
+// 	defer file.Close()
+// 	decoder := json.NewDecoder(file)
+// }
 
 //to tcp server
 const Tcpaddress = "localhost"
@@ -61,16 +69,11 @@ type InfoWithUsername struct {
 	Token    string
 }
 
-func FailSafeCheckErr(msg string, err error) {
-	if err != nil {
-		fmt.Println(msg, err)
-	}
-}
-func FailFastCheckErr(err error) {
-	if err != nil {
-		panic(err)
-	}
-}
+// func FailFastCheckErr(err error) {
+// 	if err != nil {
+// 		panic(err)
+// 	}
+// }
 
 //rename the uploaded files
 func GetFileName(fileName string, ext string) string {

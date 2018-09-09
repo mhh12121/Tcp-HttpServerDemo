@@ -11,10 +11,6 @@ import (
 	_ "github.com/go-sql-driver/mysql"
 )
 
-func init() {
-
-}
-
 func main() {
 	dao.InitDB()
 	// dao.RedisInit()
@@ -54,7 +50,10 @@ func handleAll(conn net.Conn) {
 		decoder := gob.NewDecoder(conn)
 		var data Util.ToServerData
 		err := decoder.Decode(&data)
-		Util.FailSafeCheckErr("tcp decode err", err)
+		if err != nil {
+			log.Println("tcp handle all decode err", err)
+		}
+		// Util.FailSafeCheckErr("tcp decode err", err)
 		log.Println("tcp decode", data)
 
 		//according to Ctype to diffentiate the response
@@ -92,8 +91,12 @@ func loginHandle(conn net.Conn, ruser *Util.User) {
 	fmt.Println("tcp server connect:" + remoteAddr)
 	//first go through redis cache
 	//check if exists or different
+	//what if login in another device?
 	exists, errtoken := dao.CheckToken(ruser.Username, ruser.Token)
-	Util.FailSafeCheckErr("login checktoken cache err", errtoken)
+	if errtoken != nil {
+		log.Println("login checktoken cache err", errtoken)
+	}
+	// Util.FailSafeCheckErr("login checktoken cache err", errtoken)
 	//todo
 	//some problems here(consistency)
 	//1.checktoken in redis success then return success msg to http
@@ -105,7 +108,10 @@ func loginHandle(conn net.Conn, ruser *Util.User) {
 		returnValue := Util.ResponseFromServer{Success: true, TcpData: nil}
 		encoder := gob.NewEncoder(conn)
 		errreturn := encoder.Encode(returnValue)
-		Util.FailSafeCheckErr("login auth encode direct from cache err", errreturn)
+		if errreturn != nil {
+			log.Println("login auth encode direct from cache err", errreturn)
+		}
+		// Util.FailSafeCheckErr("login auth encode direct from cache err", errreturn)
 		return
 	}
 
@@ -114,45 +120,60 @@ func loginHandle(conn net.Conn, ruser *Util.User) {
 
 	//login fail
 	if !success || errorcheck != nil {
-		fmt.Println("password wrong!")
+		log.Println("password wrong! any error?:", errorcheck)
 		gob.Register(new(Util.ResponseFromServer))
 		returnValue := Util.ResponseFromServer{Success: false, TcpData: nil}
 		encoder := gob.NewEncoder(conn)
 		errreturn := encoder.Encode(returnValue)
-		Util.FailSafeCheckErr("login mysql encode err", errreturn)
+		if errreturn != nil {
+			log.Println("login mysql encode err", errreturn)
+		}
+		// Util.FailSafeCheckErr("login mysql encode err", errreturn)
 		return
 	}
 
 	//if mysql check success, it will save it to redis as cache or update cache
 	tokenerr := dao.SetToken(ruser.Username, ruser.Token, Util.TokenExpires)
-	Util.FailSafeCheckErr("login save cache err", tokenerr)
+	if tokenerr != nil {
+		log.Println("login save cache err", tokenerr)
+	}
+	// Util.FailSafeCheckErr("login save cache err", tokenerr)
 	//login success
 	log.Println("login handle tcp")
 	gob.Register(new(Util.ResponseFromServer))
 	returnValue := Util.ResponseFromServer{Success: true, TcpData: nil}
 	encoder := gob.NewEncoder(conn)
 	errreturn := encoder.Encode(returnValue)
-	Util.FailSafeCheckErr("login auth encode err", errreturn)
+	if errreturn != nil {
+		log.Println("login auth encode err", errreturn)
+	}
+	// Util.FailSafeCheckErr("login auth encode err", errreturn)
 	return
 }
 
 func logoutHandle(conn net.Conn, username string, token interface{}) {
 	//invalid the cache in redis first
 	err := dao.InvalidCache(username, token.(string))
-	Util.FailSafeCheckErr("invalid logout usr", err)
+	if err != nil {
+		log.Println("invalid logout err", err)
+	}
+	// Util.FailSafeCheckErr("invalid logout usr", err)
 	//return to logout handle
 	success := (err == nil)
 	gob.Register(new(Util.ResponseFromServer))
 	returnValue := Util.ResponseFromServer{Success: success, TcpData: nil}
 	encoder := gob.NewEncoder(conn)
 	errreturn := encoder.Encode(returnValue)
-	Util.FailSafeCheckErr("logout encode err", errreturn)
+	if errreturn != nil {
+		log.Println("logout encode err", errreturn)
+	}
+	// Util.FailSafeCheckErr("logout encode err", errreturn)
 
 }
 func homeHandle(conn net.Conn, username string, token interface{}) {
 	//checktoken first
 	exists, errtoken := dao.CheckToken(username, token.(string))
-	Util.FailSafeCheckErr("home checktoken cache err", errtoken)
+	// Util.FailSafeCheckErr("home checktoken cache err", errtoken)
 	//1. cookie still exists but token expires
 	//---solution: clear cookie first then redirect to login
 	//2. cookie expires but token exists
@@ -160,17 +181,24 @@ func homeHandle(conn net.Conn, username string, token interface{}) {
 
 	//token not exists or not correct
 	if !exists || errtoken != nil {
+		log.Println("home checktoken cache err", errtoken)
 		gob.Register(new(Util.ResponseFromServer))
 		returnValue := Util.ResponseFromServer{Success: false, TcpData: nil}
 		encoder := gob.NewEncoder(conn)
 		errreturn := encoder.Encode(returnValue)
-		Util.FailSafeCheckErr("home auth encode direct from cache err", errreturn)
+		if errreturn != nil {
+			log.Println("home auth encode direct from cache err", errreturn)
+		}
+		// Util.FailSafeCheckErr("home auth encode direct from cache err", errreturn)
 		return
 	}
 
 	//First go through the Redis get cache
 	user, ok, err := dao.GetCacheInfo(username)
-	Util.FailSafeCheckErr("redis get cache fail:", err)
+	if err != nil {
+		log.Println("redis get cache fail err", err)
+	}
+	// Util.FailSafeCheckErr("redis get cache fail:", err)
 	//cache still valid
 	//
 	if ok && err == nil {
@@ -179,7 +207,10 @@ func homeHandle(conn net.Conn, username string, token interface{}) {
 		tohttp := &Util.ResponseFromServer{Success: true, TcpData: user}
 		encoder := gob.NewEncoder(conn)
 		errreturn := encoder.Encode(tohttp)
-		Util.FailSafeCheckErr("no this ", errreturn)
+		if errreturn != nil {
+			panic(errreturn)
+		}
+		// Util.FailSafeCheckErr("no this ", errreturn)
 		return
 	}
 
@@ -191,6 +222,7 @@ func homeHandle(conn net.Conn, username string, token interface{}) {
 		successCache := dao.SaveCacheInfo(username, userdb.Nickname, userdb.Avatar)
 		if !successCache {
 			fmt.Println("update redis homne cache fail")
+			//do nothing
 		}
 
 		//save cache success
@@ -200,16 +232,12 @@ func homeHandle(conn net.Conn, username string, token interface{}) {
 		tohttp := &Util.ResponseFromServer{Success: true, TcpData: userdb}
 		encoder := gob.NewEncoder(conn)
 		errreturn := encoder.Encode(tohttp)
-		Util.FailSafeCheckErr("home handle encode err", errreturn)
+		if errreturn != nil {
+			panic(errreturn)
+		}
+		// Util.FailSafeCheckErr("home handle encode err", errreturn)
 		return
 		// }
-		//todo
-		// //save cache fail,but still need to send back
-		// gob.Register(new(Util.RealUser))
-		// tohttp := &Util.ResponseFromServer{Success: false, TcpData: userdb}
-		// encoder := gob.NewEncoder(conn)
-		// errreturn := encoder.Encode(tohttp)
-		// Util.FailSafeCheckErr("home handle encode err", errreturn)
 
 	}
 
@@ -220,15 +248,19 @@ func homeHandle(conn net.Conn, username string, token interface{}) {
 //
 func uploadHandle(conn net.Conn, username string, avatar interface{}, token string) {
 	exists, errtoken := dao.CheckToken(username, token)
-	Util.FailSafeCheckErr("upload checktoken cache err", errtoken)
+	// Util.FailSafeCheckErr("upload checktoken cache err", errtoken)
 
 	//token not exists or not correct
 	if !exists || errtoken != nil {
+		log.Println("upload checktoken cache err", errtoken)
 		gob.Register(new(Util.ResponseFromServer))
 		returnValue := Util.ResponseFromServer{Success: false, TcpData: nil}
 		encoder := gob.NewEncoder(conn)
 		errreturn := encoder.Encode(returnValue)
-		Util.FailSafeCheckErr("home auth encode direct from cache err", errreturn)
+		if errreturn != nil {
+			log.Println("home auth encode direct from cache err", errreturn)
+		}
+		// Util.FailSafeCheckErr("home auth encode direct from cache err", errreturn)
 		return
 	}
 	success := dao.UpdateAvatar(username, "/"+avatar.(string))
@@ -255,7 +287,10 @@ func uploadHandle(conn net.Conn, username string, avatar interface{}, token stri
 	tohttp := &Util.ResponseFromServer{Success: success, TcpData: nil}
 	encoder := gob.NewEncoder(conn)
 	errreturn := encoder.Encode(tohttp)
-	Util.FailSafeCheckErr("uploadfile encode err", errreturn)
+	if errreturn != nil {
+		log.Println("nickname encode err", errreturn)
+	}
+	// Util.FailSafeCheckErr("uploadfile encode err", errreturn)
 	// return success
 }
 
@@ -263,14 +298,18 @@ func uploadHandle(conn net.Conn, username string, avatar interface{}, token stri
 func changeNickNameHandle(conn net.Conn, username string, nickname interface{}, token string) {
 	//first check token from redis frist
 	exists, errtoken := dao.CheckToken(username, token)
-	Util.FailSafeCheckErr("updatenickname checktoken cache err", errtoken)
+
+	// Util.FailSafeCheckErr("updatenickname checktoken cache err", errtoken)
 	if !exists || errtoken != nil {
 		//token expires or not correct
 		gob.Register(new(Util.ResponseFromServer))
 		tohttp := &Util.ResponseFromServer{Success: false, TcpData: nil}
 		encoder := gob.NewEncoder(conn)
 		errreturn := encoder.Encode(tohttp)
-		Util.FailSafeCheckErr("changenickname encode err", errreturn)
+		if errreturn != nil {
+			log.Println("nickname encode err", errreturn)
+		}
+		// Util.FailSafeCheckErr("changenickname encode err", errreturn)
 		return
 	}
 	//update mysql first
@@ -292,5 +331,8 @@ func changeNickNameHandle(conn net.Conn, username string, nickname interface{}, 
 	tohttp := &Util.ResponseFromServer{Success: success, TcpData: nil}
 	encoder := gob.NewEncoder(conn)
 	errreturn := encoder.Encode(tohttp)
-	Util.FailSafeCheckErr("changenickname encode err", errreturn)
+	if errreturn != nil {
+		log.Println("nickname encode err", errreturn)
+	}
+	// Util.FailSafeCheckErr("changenickname encode err", errreturn)
 }

@@ -56,7 +56,11 @@ func AllInfo(username string) (*Util.RealUser, bool) {
 
 	fmt.Println("dao home get info")
 	c, err := db.Prepare("select nickname,avatar from user where username = ? ")
-	checkErr(err)
+	if err != nil {
+		log.Println("mysql db get allinfo err", err)
+		return nil, false
+	}
+	// checkErr(err)
 	defer c.Close()
 	var (
 		nickname string
@@ -80,12 +84,13 @@ func UpdateNickname(username, nickname string) (bool, error) {
 	log.Println("dao.updatenickname", username, nickname)
 	c, err := db.Prepare("update user SET nickname = ? where username = ?")
 	if err != nil {
+		log.Println("mysql db updatenickname err", err)
 		return false, err
 	}
 	defer c.Close()
 	_, err = c.Exec(nickname, username)
 	if err != nil {
-		fmt.Println("update nickname fail", err)
+		fmt.Println("mysql update nickname fail", err)
 		return false, err
 	}
 
@@ -94,20 +99,20 @@ func UpdateNickname(username, nickname string) (bool, error) {
 func UpdateAvatar(username, avatar string) bool {
 	c, err := db.Prepare("update user SET avatar = ? where username = ?")
 	if err != nil {
-		fmt.Println("update avatar sql db connect:", err)
+		fmt.Println("mysql db update avatar err:", err)
 	}
 	defer c.Close()
 	_, err = c.Exec(avatar, username)
 	if err != nil {
-		fmt.Println("update avatar fail", err)
+		fmt.Println("mysql update avatar fail", err)
 		return false
 	}
 
 	return true
 }
+
 func checkErr(err error) {
 	if err != nil {
-
 		fmt.Println("sql get wrong", err)
 
 		// panic(err)
