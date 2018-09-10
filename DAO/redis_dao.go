@@ -16,12 +16,13 @@ func init() {
 		Addr:     Util.RedisAddr,
 		Password: "",
 		DB:       0,
-		PoolSize: 30,
+		PoolSize: 300,
 	})
 
 	pong, err := client.Ping().Result()
 	if err != nil {
-		panic(err)
+		//do nothing
+		// panic(err)
 	}
 
 	fmt.Println("initialize redis:", pong)
@@ -36,13 +37,13 @@ func InvalidCache(username string, token string) error {
 
 		return errinfo
 	}
-	client.Del("token_" + username)
+	client.Del(tokenFormat(username))
 	return nil
 }
 
 // SetToken
 func SetToken(username string, token string, expiration int64) error {
-	err := client.Set("token_"+username, token, time.Duration(expiration)).Err()
+	err := client.Set(tokenFormat(username), token, time.Duration(expiration)).Err()
 	if err != nil {
 		return err
 	}
@@ -51,7 +52,7 @@ func SetToken(username string, token string, expiration int64) error {
 
 // CheckToken
 func CheckToken(username string, token string) (bool, error) {
-	val, err := client.Get("token_" + username).Result()
+	val, err := client.Get(tokenFormat(username)).Result()
 	if err != nil {
 		return false, err
 	}
@@ -117,4 +118,8 @@ func UpdateCacheAvatar(username string, avatar string) error {
 		return err
 	}
 	return nil
+}
+
+func tokenFormat(username string) string {
+	return "token_" + username
 }

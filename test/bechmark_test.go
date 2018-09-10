@@ -74,12 +74,12 @@ func BenchmarkLoginReq(b *testing.B) {
 		req, err := http.NewRequest("POST", serverAddr, bytes.NewBufferString(data.Encode()))
 		// req.AddCookie(&http.Cookie{Name: "username", Value: username, Expires: time.Now().Add(120 * time.Second), Path: "/"})
 		// req.AddCookie(&http.Cookie{Name: "token", Value: "test", Expires: time.Now().Add(120 * time.Second), Path: "/"})
-
 		req.Header.Set("Content-Type", "application/x-www-form-urlencoded; param=value") //param=value
 		if err != nil {
 			log.Println(err)
 		}
 		<-readyGo
+
 		resp, err := client.Do(req)
 
 		if err != nil {

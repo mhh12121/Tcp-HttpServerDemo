@@ -26,7 +26,7 @@ func init() {
 	// tcpconn.SetReadDeadline(time.Now().Add(Util.TimeoutDuration))
 	factory := func() (net.Conn, error) { return net.Dial("tcp", Util.Tcpaddress+":"+Util.Tcpport) }
 	var err error
-	connpool, err = pool.NewChannelPool(20, 2000, factory)
+	connpool, err = pool.NewChannelPool(20, 300, factory)
 	if err != nil {
 		panic(err)
 	}
@@ -292,6 +292,8 @@ func loginHandler(w http.ResponseWriter, r *http.Request) {
 		//Wrap the data
 		//this token here may be destroyed
 		temptoken := GenerateToken(5)
+		//test
+		// temptoken := "test"
 		tempuser := Util.User{Username: username, Password: password, Token: temptoken}
 		tmpdata := Util.ToServerData{Ctype: "login", HttpData: tempuser}
 
@@ -327,11 +329,10 @@ func loginHandler(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 		//wrong password
-		// http.Redirect(w, r, "/Home", http.StatusFound)
-		w.WriteHeader(http.StatusForbidden)
-		w.Write([]byte(Util.ResWrongStr))
+		http.Redirect(w, r, "/login", http.StatusFound)
+		// w.WriteHeader(http.StatusForbidden)
+		// w.Write([]byte(Util.ResWrongStr))
 		return
-		// http.Redirect(w, r, "/login", http.StatusFound)
 		// log.Println("login fail")
 		// }
 

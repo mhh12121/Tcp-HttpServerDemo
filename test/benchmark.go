@@ -16,7 +16,7 @@ import (
 )
 
 //
-func benchmarkLoginReq(serverAddr string, n, c int32, isRan bool) (elapsed time.Duration) {
+func benchmarkLoginReq(serverAddr string, c int, isRan bool) (elapsed time.Duration) {
 
 	// serverAddr := "http://localhost:8080/login"
 	// n := int32(1000)
@@ -46,7 +46,7 @@ func benchmarkLoginReq(serverAddr string, n, c int32, isRan bool) (elapsed time.
 		Transport: transport,
 	}
 
-	cliRoutine := func(no int32) {
+	cliRoutine := func(no int) {
 		// for atomic.AddInt32(&remaining, -1) > 0 {
 		// continue
 
@@ -60,7 +60,7 @@ func benchmarkLoginReq(serverAddr string, n, c int32, isRan bool) (elapsed time.
 		// } else {
 		// 	buffer.WriteString("1")
 		// }
-		buffer.WriteString(strconv.Itoa(int(no)))
+		buffer.WriteString(strconv.Itoa(no))
 		log.Println("write string", no)
 		username := buffer.String()
 
@@ -82,7 +82,7 @@ func benchmarkLoginReq(serverAddr string, n, c int32, isRan bool) (elapsed time.
 		// <-readyGo
 		resp, err := client.Do(req)
 		if err != nil {
-			log.Println("simulate send request err", req, resp, err)
+			log.Println("simulate send request err", req, "response", resp, "error", err)
 		}
 		_, err1 := ioutil.ReadAll(resp.Body)
 		if err1 != nil {
@@ -95,7 +95,7 @@ func benchmarkLoginReq(serverAddr string, n, c int32, isRan bool) (elapsed time.
 
 	// }
 
-	for i := int32(0); i < c; i++ {
+	for i := 0; i < c; i++ {
 		// log.Println("loop i", i)
 		go cliRoutine(i + 1)
 	}
@@ -196,10 +196,10 @@ func benchmarkUpdateNicknameReq(serverAddr string, n, c int32, isRan bool) (elap
 func main() {
 	// benchmarkLoginReq()
 	//over 100 crash
-	num := 500
-	concurrency := 50
-	elapsed := benchmarkLoginReq("http://localhost:8080/login", int32(num), int32(concurrency), true)
-	fmt.Printf("\tTotal Requests(%v) - Concurrency(%v) - Cost(%s) - QPS(%v/sec)\n",
-		num, concurrency, elapsed, math.Ceil(float64(1000)/(float64(elapsed)/1000000000)))
+	// num := 500, int32(num)
+	concurrency := 250
+	elapsed := benchmarkLoginReq("http://localhost:8080/login", concurrency, true)
+	fmt.Printf("\t- Concurrency(%v) - Cost(%s) - QPS(%v/sec)\n",
+		concurrency, elapsed, math.Ceil(float64(1000)/(float64(elapsed)/1000000000)))
 
 }

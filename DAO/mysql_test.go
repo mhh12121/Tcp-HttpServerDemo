@@ -32,3 +32,29 @@ func TestCheck(t *testing.T) {
 		}
 	}
 }
+
+func TestUpdateNickName(t *testing.T) {
+	InitDB()
+	var tests = []struct {
+		username    string
+		newnickname string
+	}{
+		{
+			"mhh1", "dou1",
+		}, {
+			"mhh2", "dou2",
+		}, {
+			"mhha", "dou3",
+		}, {
+			"mhh3", "dou4",
+		}, {
+			"m or 1", "dou5",
+		},
+	}
+	for _, test := range tests {
+		ok, err := UpdateNickname(test.username, test.newnickname)
+		if err != nil || !ok {
+			log.Printf("Test updatenickname fail,username:%s,password:%s", test.username, test.newnickname)
+		}
+	}
+}
