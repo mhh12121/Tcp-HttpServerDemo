@@ -89,8 +89,10 @@ func benchmarkLoginReq(serverAddr string, c int, isRan bool) (elapsed time.Durat
 			log.Println("ioutil req err:", req, err1)
 		}
 
+		// time.Sleep(1 * time.Second)
 		resp.Body.Close()
 		wg.Done()
+
 	}
 
 	// }
@@ -197,7 +199,7 @@ func main() {
 	// benchmarkLoginReq()
 	//over 100 crash
 	// num := 500, int32(num)
-	concurrency := 250
+	concurrency := 1000
 	elapsed := benchmarkLoginReq("http://localhost:8080/login", concurrency, true)
 	fmt.Printf("\t- Concurrency(%v) - Cost(%s) - QPS(%v/sec)\n",
 		concurrency, elapsed, math.Ceil(float64(1000)/(float64(elapsed)/1000000000)))

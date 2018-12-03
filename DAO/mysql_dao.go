@@ -4,23 +4,39 @@ import (
 	"database/sql"
 	"fmt"
 	"log"
+	"path"
+	"runtime"
 
+	"../Conf"
 	"../Util"
 )
 
-type dbinstance struct {
-	address string
+var db *sql.DB
+var ad string
+
+func init() {
+	_, filepath, _, _ := runtime.Caller(0)
+	p := path.Dir(filepath)
+	p = path.Dir(p)
+
+	log.Println("log path", p)
+
+	Conf.LoadConf(p + "/Conf/config.json")
+
 }
 
-var db *sql.DB
-var ad = "root:12345678@/entrytask?charset=utf8"
+//
 
 func InitDB() {
+	ad = Conf.Config.Mysql.Username + ":" + Conf.Config.Mysql.Password + "@" +
+		"tcp(" + Conf.Config.Mysql.Host + ":" + Conf.Config.Mysql.Port + ")/" +
+		Conf.Config.Mysql.Db + "?charset=utf8"
 	var err error
+	log.Println("das", ad)
 	db, err = sql.Open("mysql", ad)
 	checkErr(err)
-	db.SetMaxOpenConns(200)
-	db.SetMaxIdleConns(300)
+	db.SetMaxOpenConns(1000)
+	db.SetMaxIdleConns(1000)
 	// defer db.Close()
 	err = db.Ping()
 	checkErr(err)

@@ -12,25 +12,37 @@ import (
 	"net/http"
 	"os"
 	"path"
+	"runtime"
 
+	"../Conf"
 	"../Util"
+	service "../services"
 	pool "gopkg.in/fatih/pool.v2"
 )
 
 var connpool pool.Pool
 
 func init() {
+	_, filepath, _, _ := runtime.Caller(0)
+	p := path.Dir(filepath)
+	p = path.Dir(p)
+
+	log.Println("log path", p)
+
+	Conf.LoadConf(p + "/Conf/config.json")
 	// var err error
 	// tcpconn, err = net.Dial("tcp", Util.Tcpaddress+":"+Util.Tcpport)
 	// Util.FailFastCheckErr(err)
 	// tcpconn.SetReadDeadline(time.Now().Add(Util.TimeoutDuration))
-	factory := func() (net.Conn, error) { return net.Dial("tcp", Util.Tcpaddress+":"+Util.Tcpport) }
+	factory := func() (net.Conn, error) {
+		return net.Dial("tcp", Conf.Config.Connect.Tcphost+":"+Conf.Config.Connect.Tcpport)
+	}
 	var err error
-	connpool, err = pool.NewChannelPool(20, 300, factory)
+	connpool, err = pool.NewChannelPool(Conf.Config.Chanpool.Initsize, Conf.Config.Chanpool.Maxsize, factory)
 	if err != nil {
 		panic(err)
 	}
-	// Util.FailFastCheckErr(err)
+
 	// now you can get a connection from the pool, if there is no connection
 	// available it will create a new one via the factory function.
 
@@ -38,8 +50,10 @@ func init() {
 
 var loginTemplate *template.Template
 var homeTemplate *template.Template
+var rpc *service.RpcHandle
 
 func main() {
+
 	// http.HandleFunc("/", viewHandler)
 	loginTemplate = template.Must(template.ParseFiles("../view/login.html"))
 	homeTemplate = template.Must(template.ParseFiles("../view/home.html"))
@@ -53,7 +67,8 @@ func main() {
 	http.HandleFunc("/Home/change", changeNickNameHandler)
 	http.HandleFunc("/Home/logout", logoutHandler)
 	http.HandleFunc("/test", testHandler)
-	log.Fatal(http.ListenAndServe(":"+Util.Httpport, nil))
+	err := http.ListenAndServe(Conf.Config.Connect.Httphost+":"+Conf.Config.Connect.Httpport, nil)
+	log.Fatal(err)
 
 }
 func testHandler(w http.ResponseWriter, r *http.Request) {
@@ -99,8 +114,8 @@ func logoutHandler(w http.ResponseWriter, r *http.Request) {
 
 		// for {
 		//go to tcp to invalid the cache
-
-		_, successlogout := readServer(w, r, tcpconn, "logout")
+		readchan := make(chan int)
+		_, successlogout := readServer(w, r, tcpconn, "logout", readchan)
 		if successlogout {
 			//temp struct
 			logoutReturn := struct {
@@ -149,13 +164,15 @@ func GenerateToken(len int) string {
 }
 
 //get response from server
-func readServer(w http.ResponseWriter, r *http.Request, tcpconn net.Conn, ctype string) (interface{}, bool) {
+func readServer(w http.ResponseWriter, r *http.Request, tcpconn net.Conn, ctype string, readchan chan int) (interface{}, bool) {
 
 	// defer tcpconn.Close()
-
+	<-readchan
+	fmt.Println("pass readchan")
 	switch ctype {
 	case "login":
 		{
+
 			//decoder
 			gob.Register(new(Util.ResponseFromServer))
 			decoder := gob.NewDecoder(tcpconn)
@@ -281,8 +298,10 @@ func loginHandler(w http.ResponseWriter, r *http.Request) {
 		if errget != nil {
 			panic(errget)
 		}
+
 		// Util.FailFastCheckErr(errget)
 		defer tcpconn.Close()
+
 		fmt.Println("enter!!!!!!")
 		username := r.FormValue("username")
 		password := r.FormValue("password")
@@ -296,7 +315,25 @@ func loginHandler(w http.ResponseWriter, r *http.Request) {
 		// temptoken := "test"
 		tempuser := Util.User{Username: username, Password: password, Token: temptoken}
 		tmpdata := Util.ToServerData{Ctype: "login", HttpData: tempuser}
+		//----rpc call login------------
+		readchan := make(chan int)
 
+		//tcp connection failed?
+		// rpc.Con = tcpconn
+		// rpc.Ctype = "login"
+		// rpc.Data = tmpdata
+		// defer func() {
+		// 	fmt.Println("rpc closed")
+		// 	rpc.Con = nil
+		// }()
+
+		// err := rpc.Set(readchan)
+		// if err != nil {
+		// 	panic(err)
+		// }
+
+		//----------------------------
+		//------old--------------
 		gob.Register(new(Util.User))
 		gob.Register(new(Util.RealUser))
 		gob.Register(new(Util.ToServerData))
@@ -305,13 +342,14 @@ func loginHandler(w http.ResponseWriter, r *http.Request) {
 		if err != nil {
 			panic(err)
 		}
+		//-------------------------
 		// Util.FailFastCheckErr(err)
 		// encoder.Encode(tempuser)
 		fmt.Println("encode usename pwd:", tmpdata)
 		// //loop to listen from server
 
 		// for {
-		_, successlogin := readServer(w, r, tcpconn, "login")
+		_, successlogin := readServer(w, r, rpc.Con, "login", readchan) //tcpconn
 		//success login
 		if successlogin {
 			fmt.Println("login success!!http")
@@ -333,7 +371,7 @@ func loginHandler(w http.ResponseWriter, r *http.Request) {
 		// w.WriteHeader(http.StatusForbidden)
 		// w.Write([]byte(Util.ResWrongStr))
 		return
-		// log.Println("login fail")
+
 		// }
 
 	}
@@ -383,8 +421,9 @@ func homeHandler(w http.ResponseWriter, r *http.Request) {
 
 		//loop listen response from tcp server
 		// for {
+		readchan := make(chan int)
 		log.Println("home render loop", tmpdata)
-		data, successHome := readServer(w, r, tcpconn, "home")
+		data, successHome := readServer(w, r, tcpconn, "home", readchan)
 		//token correct
 		if successHome {
 			ruser := data.(*Util.RealUser)
@@ -483,7 +522,8 @@ func uploadHandler(w http.ResponseWriter, r *http.Request) {
 		// Util.FailFastCheckErr(uploaderr)
 		//listen response from tcp server
 		// for {
-		_, successupload := readServer(w, r, tcpconn, "uploadAvatar")
+		readchan := make(chan int)
+		_, successupload := readServer(w, r, tcpconn, "uploadAvatar", readchan)
 		if successupload {
 
 			http.Redirect(w, r, "/Home", http.StatusFound)
@@ -531,9 +571,9 @@ func changeNickNameHandler(w http.ResponseWriter, r *http.Request) {
 			log.Println("change nickname encode err", err)
 		}
 		// Util.FailFastCheckErr(err)
-
+		readchan := make(chan int)
 		for {
-			_, success := readServer(w, r, tcpconn, "changeNickName")
+			_, success := readServer(w, r, tcpconn, "changeNickName", readchan)
 			if success {
 				http.Redirect(w, r, "/Home", http.StatusFound)
 				return
@@ -551,13 +591,3 @@ func checkAndCreateFileName(oldName string) (newName string, isLegal bool) {
 	}
 	return newName, isLegal
 }
-
-// var validPath = regexp.MustCompile("^/(edit|save|view)/([a-zA-Z0-9]+)$")
-
-// func getTitle(w http.ResponseWriter,r *http.Request) (string,error){
-// 	m : = validPath.
-// }
-
-// func saveHandler(w http.ResponseWriter, r *http.Request) {
-// 	// title, err := getTitle(w, r)
-// }

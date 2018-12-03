@@ -17,17 +17,15 @@ import (
 // }
 
 //to tcp server
-const Tcpaddress = "localhost"
-const Tcpport = "8081"
-const Httpport = "8080"
-const TimeoutDuration = 5 * time.Minute
-const UploadPath = "../images/"
-const ResSuccessStr = "success"
-const ResFailStr = "fail"
-const ResWrongStr = "wrong password or account"
 
-//redis info
-const RedisAddr = "localhost:6379"
+const (
+	TimeoutDuration = 5 * time.Minute
+	UploadPath      = "../images/"
+	// ResSuccessStr   = "success"
+	// ResFailStr      = "fail"
+	// ResWrongStr     = "wrong password or account"
+
+)
 
 var TokenExpires = int64(1e11)
 var CookieExpires = time.Now().Add(1 * time.Hour)
@@ -38,12 +36,14 @@ var CookieExpires = time.Now().Add(1 * time.Hour)
 type ToServerData struct {
 	Ctype    string
 	HttpData interface{}
+	// Errcode  int
 }
 
 //Uniform data from tcp server
 type ResponseFromServer struct {
 	Success bool
 	TcpData interface{}
+	// Errcode int
 }
 
 //success response from server

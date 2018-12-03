@@ -5,6 +5,7 @@ import (
 	"log"
 	"time"
 
+	"../Conf"
 	"../Util"
 	"github.com/go-redis/redis"
 )
@@ -12,11 +13,19 @@ import (
 var client *redis.Client
 
 func init() {
+	// _, filepath, _, _ := runtime.Caller(0)
+	// p := path.Dir(filepath)
+	// p = path.Dir(p)
+
+	// log.Println("log path", p)
+
+	// Conf.LoadConf(p + "/Conf/config.json")
+	// log.Println(Conf.Config.Redis.Host+":"+Conf.Config.Redis.Port, Conf.Config.Redis.Password, Conf.Config.Redis.Db, Conf.Config.Redis.Poolsize)
 	client = redis.NewClient(&redis.Options{
-		Addr:     Util.RedisAddr,
-		Password: "",
-		DB:       0,
-		PoolSize: 300,
+		Addr:     Conf.Config.Redis.Host + ":" + Conf.Config.Redis.Port,
+		Password: Conf.Config.Redis.Password,
+		DB:       Conf.Config.Redis.Db,
+		PoolSize: Conf.Config.Redis.Poolsize,
 	})
 
 	pong, err := client.Ping().Result()
