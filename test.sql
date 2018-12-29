@@ -1,4 +1,4 @@
-use entrytask;
+use GoDemo;
 
 -- create table if not exists user(
 -- 	id int unique auto_increment,
@@ -23,7 +23,7 @@ BEGIN
      
       
       WHILE var < user_count DO
-          INSERT INTO USER(id,username, password, nickname, avatar) VALUES ( null,CONCAT('mhh', id), "a123456",concat('dou',id) ,"/go1.png" );
+          INSERT INTO user(id,username, password, nickname, avatar,email,ctime) VALUES ( null,CONCAT('mhh', id), "a123456",concat('dou',id) ,"/go1.png",null,UNIX_TIMESTAMP(Now()) );
           SET id = id + 1;
           SET var = var + 1;
       END WHILE;
@@ -31,5 +31,6 @@ BEGIN
 END$$
 
 DELIMITER ;
-all BatchInsert(1,1000)
+
+call BatchInsert(1,1000)
 --  call BatchInsert(1, 10000000)

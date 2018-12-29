@@ -8,10 +8,11 @@ import (
 	"path"
 	"runtime"
 
-	"../Conf"
-	"../DAO"
-	"../Util"
-	service "../services"
+	"entry_task/Conf"
+	dao "entry_task/DAO"
+	"entry_task/Util"
+	service "entry_task/services"
+
 	_ "github.com/go-sql-driver/mysql"
 )
 
@@ -66,6 +67,7 @@ func handleAll(conn net.Conn) {
 		err := decoder.Decode(&data)
 		if err != nil {
 			log.Println("tcp handle all decode err", err)
+			panic(err)
 		}
 		// Util.FailSafeCheckErr("tcp decode err", err)
 		log.Println("tcp decode", data)

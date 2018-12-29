@@ -5,8 +5,8 @@ import (
 	"log"
 	"net"
 
-	"../DAO"
-	"../Util"
+	dao "entry_task/DAO"
+	"entry_task/Util"
 )
 
 // type LogoutService struct {

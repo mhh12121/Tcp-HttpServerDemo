@@ -14,9 +14,11 @@ import (
 	"path"
 	"runtime"
 
-	"../Conf"
-	"../Util"
-	service "../services"
+	"entry_task/Conf"
+
+	"entry_task/Util"
+	service "entry_task/services"
+
 	pool "gopkg.in/fatih/pool.v2"
 )
 
@@ -56,14 +58,14 @@ func main() {
 
 	// http.HandleFunc("/", viewHandler)
 	loginTemplate = template.Must(template.ParseFiles("../view/login.html"))
-	homeTemplate = template.Must(template.ParseFiles("../view/home.html"))
+	homeTemplate = template.Must(template.ParseFiles("../view/Home.html"))
 
 	http.Handle("/images/", http.StripPrefix("/images/", http.FileServer(http.Dir(Util.UploadPath))))
 	http.HandleFunc("/login", loginHandler)
 	// http.HandleFunc("/login/auth", authHandler)
 	http.HandleFunc("/Home", homeHandler)
 	http.HandleFunc("/Home/upload", uploadHandler)
-
+	http.HandleFunc("/", testHandler)
 	http.HandleFunc("/Home/change", changeNickNameHandler)
 	http.HandleFunc("/Home/logout", logoutHandler)
 	http.HandleFunc("/test", testHandler)
@@ -116,7 +118,7 @@ func logoutHandler(w http.ResponseWriter, r *http.Request) {
 		//go to tcp to invalid the cache
 		readchan := make(chan int)
 		_, successlogout := readServer(w, r, tcpconn, "logout", readchan)
-		if successlogout {
+		if successlogout { //to clear all cookie
 			//temp struct
 			logoutReturn := struct {
 				Ok   bool
@@ -167,12 +169,11 @@ func GenerateToken(len int) string {
 func readServer(w http.ResponseWriter, r *http.Request, tcpconn net.Conn, ctype string, readchan chan int) (interface{}, bool) {
 
 	// defer tcpconn.Close()
-	<-readchan
-	fmt.Println("pass readchan")
+	// <-readchan
+	// fmt.Println("pass readchan")
 	switch ctype {
 	case "login":
 		{
-
 			//decoder
 			gob.Register(new(Util.ResponseFromServer))
 			decoder := gob.NewDecoder(tcpconn)
@@ -274,16 +275,17 @@ func loginHandler(w http.ResponseWriter, r *http.Request) {
 		usernamecookie, erruser := r.Cookie("username")
 		tokencookie, errtoken := r.Cookie("token")
 		//not found cookie
-		if erruser != nil {
+		if erruser != nil || errtoken != nil {
 			fmt.Println("no cookie login", erruser)
 			t.Execute(w, nil)
 			return
 		}
-		if errtoken != nil {
-			fmt.Println("no tokencookie", errtoken)
-			t.Execute(w, nil)
-			return
-		}
+		// if errtoken != nil {
+		// 	fmt.Println("no tokencookie", errtoken)
+		// 	t.Execute(w, nil)
+		// 	return
+		// }
+
 		//if found username and token (no matter right or wrong)
 		//tmpcommand
 		http.Redirect(w, r, "/Home", http.StatusFound)
@@ -349,11 +351,10 @@ func loginHandler(w http.ResponseWriter, r *http.Request) {
 		// //loop to listen from server
 
 		// for {
-		_, successlogin := readServer(w, r, rpc.Con, "login", readchan) //tcpconn
+		_, successlogin := readServer(w, r, tcpconn, "login", readchan) //tcpconn or rpc.Con
 		//success login
 		if successlogin {
 			fmt.Println("login success!!http")
-			//, MaxAge: Util.CookieExpires
 			//, MaxAge: Util.CookieExpires
 			log.Println("login cookie expr", Util.CookieExpires)
 

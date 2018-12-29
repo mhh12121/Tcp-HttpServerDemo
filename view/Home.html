@@ -18,14 +18,14 @@
     
     <div>
         <p>change profile:</p>
-        <form method="POST" action="http://localhost:8080/Home/upload" enctype="multipart/form-data">
+        <form method="POST" action="/Home/upload" enctype="multipart/form-data">
                 <input type="file" name="profile" value="files">
                 <input type="submit" value="change!">
         </form>
     </div>
     <div>
         <p>change nickname:</p>
-        <form method="POST" action="http://localhost:8080/Home/change" >
+        <form method="POST" action="/Home/change" >
             <input id="newnickname" type="text" name="newnickname" placeholder="your new nickname!" maxlength="50">
             <input id="changenickBtn" type="submit" value="submit!">
         </form>
@@ -48,7 +48,7 @@
             dataType:"json",
             success:function(rdata){
                 if (rdata.Ok==true){
-                    $(location).attr('href','http://localhost:8080/login');
+                    $(location).attr('href','http://localhost:8099/login');
                 }else{
                     alert("something wrong");
                 }

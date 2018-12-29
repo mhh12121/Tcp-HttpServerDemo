@@ -6,8 +6,8 @@ import (
 	"log"
 	"net"
 
-	"../DAO"
-	"../Util"
+	dao "entry_task/DAO"
+	"entry_task/Util"
 )
 
 func UploadHandle(conn net.Conn, username string, avatar interface{}, token string) {

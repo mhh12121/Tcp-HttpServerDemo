@@ -5,8 +5,9 @@ import (
 	"log"
 	"time"
 
-	"../Conf"
-	"../Util"
+	"entry_task/Conf"
+	"entry_task/Util"
+
 	"github.com/go-redis/redis"
 )
 

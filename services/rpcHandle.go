@@ -4,7 +4,7 @@ import (
 	"encoding/gob"
 	"net"
 
-	"../Util"
+	"entry_task/Util"
 )
 
 type RpcHandle struct {

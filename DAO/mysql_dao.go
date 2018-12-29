@@ -7,8 +7,8 @@ import (
 	"path"
 	"runtime"
 
-	"../Conf"
-	"../Util"
+	"entry_task/Conf"
+	"entry_task/Util"
 )
 
 var db *sql.DB

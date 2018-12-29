@@ -6,8 +6,8 @@ import (
 	"log"
 	"net"
 
-	"../DAO"
-	"../Util"
+	dao "entry_task/DAO"
+	"entry_task/Util"
 )
 
 func HomeHandle(conn net.Conn, username string, token interface{}) {
