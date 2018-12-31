@@ -25,7 +25,7 @@ func benchmarkLoginReq(serverAddr string, c int, isRan bool) (elapsed time.Durat
 	// readyGo := make(chan bool)
 	var wg sync.WaitGroup
 	log.Println("concurrency", c)
-	wg.Add(int(c))
+	// wg.Add(int(c))
 
 	// remaining := n
 
@@ -74,7 +74,7 @@ func benchmarkLoginReq(serverAddr string, c int, isRan bool) (elapsed time.Durat
 		// req.AddCookie(&http.Cookie{Name: "token", Value: "test", Expires: time.Now().Add(120 * time.Second), Path: "/"})
 
 		req.Header.Set("Content-Type", "application/x-www-form-urlencoded") // This makes it workparam=value
-		req.Close = true
+		req.Close = false
 		if err != nil {
 			log.Println(err)
 		}
@@ -98,6 +98,7 @@ func benchmarkLoginReq(serverAddr string, c int, isRan bool) (elapsed time.Durat
 	// }
 
 	for i := 0; i < c; i++ {
+		wg.Add(1)
 		// log.Println("loop i", i)
 		go cliRoutine(i + 1)
 	}
@@ -200,7 +201,8 @@ func main() {
 	//over 100 crash
 	// num := 500, int32(num)
 	concurrency := 1000
-	elapsed := benchmarkLoginReq("http://localhost:8080/login", concurrency, true)
+
+	elapsed := benchmarkLoginReq("http://localhost:8099/login", concurrency, true)
 	fmt.Printf("\t- Concurrency(%v) - Cost(%s) - QPS(%v/sec)\n",
 		concurrency, elapsed, math.Ceil(float64(1000)/(float64(elapsed)/1000000000)))
 

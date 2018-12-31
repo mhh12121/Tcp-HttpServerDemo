@@ -25,6 +25,14 @@ import (
 var connpool pool.Pool
 
 func init() {
+
+}
+
+var loginTemplate *template.Template
+var homeTemplate *template.Template
+var rpc *service.RpcHandle
+
+func main() {
 	_, filepath, _, _ := runtime.Caller(0)
 	p := path.Dir(filepath)
 	p = path.Dir(p)
@@ -44,17 +52,8 @@ func init() {
 	if err != nil {
 		panic(err)
 	}
-
 	// now you can get a connection from the pool, if there is no connection
 	// available it will create a new one via the factory function.
-
-}
-
-var loginTemplate *template.Template
-var homeTemplate *template.Template
-var rpc *service.RpcHandle
-
-func main() {
 
 	// http.HandleFunc("/", viewHandler)
 	loginTemplate = template.Must(template.ParseFiles("../view/login.html"))
@@ -69,8 +68,8 @@ func main() {
 	http.HandleFunc("/Home/change", changeNickNameHandler)
 	http.HandleFunc("/Home/logout", logoutHandler)
 	http.HandleFunc("/test", testHandler)
-	err := http.ListenAndServe(Conf.Config.Connect.Httphost+":"+Conf.Config.Connect.Httpport, nil)
-	log.Fatal(err)
+	errhttp := http.ListenAndServe(Conf.Config.Connect.Httphost+":"+Conf.Config.Connect.Httpport, nil)
+	log.Fatal(errhttp)
 
 }
 func testHandler(w http.ResponseWriter, r *http.Request) {
@@ -302,7 +301,7 @@ func loginHandler(w http.ResponseWriter, r *http.Request) {
 		}
 
 		// Util.FailFastCheckErr(errget)
-		defer tcpconn.Close()
+		//defer tcpconn.Close()
 
 		fmt.Println("enter!!!!!!")
 		username := r.FormValue("username")
@@ -353,6 +352,7 @@ func loginHandler(w http.ResponseWriter, r *http.Request) {
 		// for {
 		_, successlogin := readServer(w, r, tcpconn, "login", readchan) //tcpconn or rpc.Con
 		//success login
+		tcpconn.Close()
 		if successlogin {
 			fmt.Println("login success!!http")
 			//, MaxAge: Util.CookieExpires
@@ -362,13 +362,13 @@ func loginHandler(w http.ResponseWriter, r *http.Request) {
 			http.SetCookie(w, &cookie)
 			cookie = http.Cookie{Name: "token", Value: temptoken, Path: "/", Expires: Util.CookieExpires}
 			http.SetCookie(w, &cookie)
-			// http.Redirect(w, r, "/test", http.StatusFound)
 			http.Redirect(w, r, "/Home", http.StatusFound)
 
 			return
 		}
 		//wrong password
 		http.Redirect(w, r, "/login", http.StatusFound)
+
 		// w.WriteHeader(http.StatusForbidden)
 		// w.Write([]byte(Util.ResWrongStr))
 		return
@@ -526,7 +526,6 @@ func uploadHandler(w http.ResponseWriter, r *http.Request) {
 		readchan := make(chan int)
 		_, successupload := readServer(w, r, tcpconn, "uploadAvatar", readchan)
 		if successupload {
-
 			http.Redirect(w, r, "/Home", http.StatusFound)
 			return
 		}

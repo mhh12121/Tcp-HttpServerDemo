@@ -6,8 +6,8 @@
         "tcpport":"8098"
     },
     "Chanpool":{
-        "initsize":5,
-        "maxsize":200
+        "initsize":10,
+        "maxsize":400
     },
     "redis":{
         "host":"localhost",
