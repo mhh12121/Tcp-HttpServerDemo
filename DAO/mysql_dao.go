@@ -8,7 +8,7 @@ import (
 	"runtime"
 
 	"entry_task/Conf"
-	util "entry_task/Data"
+	data "entry_task/Data"
 
 	"github.com/golang/protobuf/proto"
 )
@@ -70,7 +70,7 @@ func Check(username, password string) (bool, error) {
 }
 
 //A user's info
-func AllInfo(username string) (*util.RealUser, bool) {
+func AllInfo(username string) (*data.RealUser, bool) {
 
 	fmt.Println("dao home get info")
 	c, err := db.Prepare("select nickname,avatar from user where username = ? ")
@@ -91,7 +91,7 @@ func AllInfo(username string) (*util.RealUser, bool) {
 	}
 
 	//then return
-	return &util.RealUser{Username: proto.String(username), Nickname: proto.String(nickname), Avatar: proto.String(avatar)}, true
+	return &data.RealUser{Username: proto.String(username), Nickname: proto.String(nickname), Avatar: proto.String(avatar)}, true
 
 	// fmt.Println("mysql get allinfo failed")
 	// return nil, false

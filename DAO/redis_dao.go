@@ -6,7 +6,7 @@ import (
 	"time"
 
 	"entry_task/Conf"
-	util "entry_task/Data"
+	data "entry_task/Data"
 
 	"github.com/go-redis/redis"
 	"github.com/golang/protobuf/proto"
@@ -90,7 +90,7 @@ func SaveCacheInfo(username string, nickname string, avatar string) bool {
 
 // CacheInfo
 //not used
-func GetCacheInfo(username string) (*util.RealUser, bool, error) {
+func GetCacheInfo(username string) (*data.RealUser, bool, error) {
 	val, err := client.HGetAll(username).Result()
 	log.Println("val", val)
 	log.Println("redis val", val)
@@ -98,7 +98,7 @@ func GetCacheInfo(username string) (*util.RealUser, bool, error) {
 		return nil, false, err
 	}
 	if val["valid"] != "0" && len(val) != 0 {
-		tmpuser := &util.RealUser{Username: proto.String(username), Avatar: proto.String(val["avatar"]), Nickname: proto.String(val["nickname"])}
+		tmpuser := &data.RealUser{Username: proto.String(username), Avatar: proto.String(val["avatar"]), Nickname: proto.String(val["nickname"])}
 		return tmpuser, true, nil
 	}
 	return nil, false, err

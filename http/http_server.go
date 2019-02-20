@@ -2,9 +2,9 @@ package main
 
 import (
 	"crypto/rand"
+	"encoding/json"
 	"fmt"
 	"html/template"
-	"io/ioutil"
 	"log"
 	"net"
 	"net/http"
@@ -61,11 +61,11 @@ func main() {
 	http.Handle("/images/", http.StripPrefix("/images/", http.FileServer(http.Dir(Util.UploadPath))))
 	http.HandleFunc("/login", loginHandler)
 	// http.HandleFunc("/login/auth", authHandler)
-	// http.HandleFunc("/Home", homeHandler)
+	http.HandleFunc("/Home", homeHandler)
 	// http.HandleFunc("/Home/upload", uploadHandler)
 	http.HandleFunc("/", testHandler)
 	// http.HandleFunc("/Home/change", changeNickNameHandler)
-	// http.HandleFunc("/Home/logout", logoutHandler)
+	http.HandleFunc("/Home/logout", logoutHandler)
 	http.HandleFunc("/test", testHandler)
 	errhttp := http.ListenAndServe(Conf.Config.Connect.Httphost+":"+Conf.Config.Connect.Httpport, nil)
 	log.Fatal(errhttp)
@@ -79,82 +79,85 @@ func testHandler(w http.ResponseWriter, r *http.Request) {
 
 }
 
-// func logoutHandler(w http.ResponseWriter, r *http.Request) {
-// 	if r.Method == http.MethodPost {
-// 		//todo
-// 		//Actually not use it
-// 		tmp := r.Context()
-// 		fmt.Println("log out ", tmp)
-// 		//
-// 		tcpconn, errget := connpool.Get()
-// 		if errget != nil {
-// 			panic(errget)
-// 		}
+func logoutHandler(w http.ResponseWriter, r *http.Request) {
+	if r.Method == http.MethodPost {
+		//todo
+		//Actually not use it
+		tmpc := r.Context()
+		fmt.Println("log out ", tmpc)
+		//
+		tcpconn, errget := connpool.Get()
+		if errget != nil {
+			panic(errget)
+		}
 
-// 		user, erruser := r.Cookie("username")
-// 		if erruser != nil {
-// 			log.Println("logout no user cookie")
-// 		}
+		user, erruser := r.Cookie("username")
+		if erruser != nil {
+			log.Println("logout no user cookie")
+		}
 
-// 		token, errtoken := r.Cookie("token")
-// 		if errtoken != nil {
-// 			log.Println("logout no token cookie")
-// 		}
-// 		httpdata := &Util.InfoWithUsername{Username: user.Value, Info: token.Value}
-// 		tmpdata := &Util.ToServerData{Ctype: "logout", HttpData: httpdata}
+		token, errtoken := r.Cookie("token")
+		if errtoken != nil {
+			log.Println("logout no token cookie")
+		}
+		httpWrap := &data.InfoWithUsername{Username: proto.String(user.Value), Token: proto.String(token.Value)}
+		httpData, hErr := proto.Marshal(httpWrap)
+		if hErr != nil {
+			fmt.Println("logout marshal", hErr)
+			panic(hErr)
+		}
 
-// 		gob.Register(new(Util.InfoWithUsername))
-// 		gob.Register(new(Util.ToServerData))
-// 		encoder := gob.NewEncoder(tcpconn)
-// 		err := encoder.Encode(tmpdata)
-// 		if err != nil {
-// 			log.Println("logout http encode err")
-// 			panic(err)
-// 		}
-// 		// Util.FailSafeCheckErr("logout http encode err", err)
+		tmp := &data.ToServerData{Ctype: proto.String("logout"), Httpdata: httpData}
+		tmpdata, tErr := proto.Marshal(tmp)
+		if tErr != nil {
+			panic(tErr)
+		}
 
-// 		// for {
-// 		//go to tcp to invalid the cache
-// 		readchan := make(chan int)
-// 		_, successlogout := readServer(w, r, tcpconn, "logout", readchan)
-// 		if successlogout { //to clear all cookie
-// 			//temp struct
-// 			logoutReturn := struct {
-// 				Ok   bool
-// 				Data interface{}
-// 			}{
-// 				true,
-// 				"",
-// 			}
-// 			cookieuser := http.Cookie{
-// 				Name:   "username",
-// 				MaxAge: -1,
-// 				Path:   "/",
-// 			}
-// 			cookietoken := http.Cookie{
-// 				Name:   "token",
-// 				MaxAge: -1,
-// 				Path:   "/",
-// 			}
-// 			http.SetCookie(w, &cookieuser)
-// 			http.SetCookie(w, &cookietoken)
-// 			b, err := json.Marshal(logoutReturn)
-// 			if err != nil {
-// 				log.Println("logout http return to browser err")
-// 				panic(err)
-// 			}
+		_, writeErr := tcpconn.Write(tmpdata)
+		if writeErr != nil {
+			panic(writeErr)
+		}
+		// for {
+		//go to tcp to invalid the cache
 
-// 			w.Header().Set("content-type", "application/json")
-// 			w.Write(b)
-// 			return
-// 		}
-// 		fmt.Println("logout:fail delete cache in redis")
-// 		return
-// 		// }
+		_, successlogout := readServer(w, r, tcpconn, "logout")
+		if successlogout { //to clear all cookie
+			//temp struct
+			logoutReturn := struct {
+				Ok   bool
+				Data interface{}
+			}{
+				true,
+				"",
+			}
+			cookieuser := http.Cookie{
+				Name:   "username",
+				MaxAge: -1,
+				Path:   "/",
+			}
+			cookietoken := http.Cookie{
+				Name:   "token",
+				MaxAge: -1,
+				Path:   "/",
+			}
+			http.SetCookie(w, &cookieuser)
+			http.SetCookie(w, &cookietoken)
+			b, err := json.Marshal(logoutReturn)
+			if err != nil {
+				log.Println("logout http return to browser err")
+				panic(err)
+			}
 
-// 	}
+			w.Header().Set("content-type", "application/json")
+			w.Write(b)
+			return
+		}
+		fmt.Println("logout:fail delete cache in redis")
+		return
+		// }
+	}
 
-// }
+}
 
 //generate simple token
 func GenerateToken(len int) string {
@@ -165,118 +168,173 @@ func GenerateToken(len int) string {
 
 //get response from server
 func readServer(w http.ResponseWriter, r *http.Request, tcpconn net.Conn, ctype string) (interface{}, bool) {
-	// buff := make([]byte, 1024)
+	buff := make([]byte, 4096)
+	// rw := bufio.NewReadWriter(bufio.NewReader(tcpconn), bufio.NewWriter(tcpconn))
 	// c := bufio.NewReader(tcpconn)
 	// defer tcpconn.Close()
 	// <-readchan
 	// fmt.Println("pass readchan")
+
 	switch ctype {
 	case "login":
 		{
-			size, cerr := ioutil.ReadAll(tcpconn)
-			// .Read(buff)
-			if cerr != nil {
-				fmt.Println("buferr", cerr)
-				panic(cerr)
+			for {
+
+				size, cerr := tcpconn.Read(buff)
+				// .Read(buff)
+				if cerr != nil {
+					fmt.Println("buferr", cerr)
+					panic(cerr)
+				}
+				if size == 0 {
+					fmt.Println("nothing in conn")
+					return nil, false
+				}
+				// _, ioerr := io.ReadFull(c, buff[:int(size)])
+				// if ioerr != nil {
+				// 	fmt.Println(ioerr)
+				// 	panic(ioerr)
+				// }
+				dataResp := &data.ResponseFromServer{}
+				dataErr := proto.Unmarshal(buff[:size], dataResp) //illeagl tag 0
+				if dataErr != nil {
+					fmt.Println("proto login unmarshal", dataErr)
+					panic(dataErr)
+				}
+
+				//decoder
+				// gob.Register(new(Util.ResponseFromServer))
+				// decoder := gob.NewDecoder(tcpconn)
+				// var tmp Util.ResponseFromServer
+				// decoder.Decode(&tmp)
+				// log.Println("login http server", tmp)
+				//tcp server response ok
+				//and login success
+				// if tmp.Success {
+				// 	fmt.Println("get!!!", tmp)
+				// 	return nil, true
+				// }
+				//something wrong in tcp server
+				//or login fail
+				fmt.Println("http read server:", dataResp)
+				if dataResp.GetSuccess() {
+					return nil, true
+				}
+				// return Util.ResFailStr, false
+
 			}
-			// _, ioerr := io.ReadFull(c, buff[:int(size)])
-			// if ioerr != nil {
-			// 	fmt.Println(ioerr)
-			// 	panic(ioerr)
-			// }
-			data := &data.ResponseFromServer{}
-			dataErr := proto.Unmarshal(size, data)
-			if dataErr != nil {
-				fmt.Println("proto login unmarshal", dataErr)
-				panic(dataErr)
-			}
-			//decoder
-			// gob.Register(new(Util.ResponseFromServer))
-			// decoder := gob.NewDecoder(tcpconn)
-			// var tmp Util.ResponseFromServer
-			// decoder.Decode(&tmp)
-			// log.Println("login http server", tmp)
-			//tcp server response ok
-			//and login success
-			// if tmp.Success {
-			// 	fmt.Println("get!!!", tmp)
-			// 	return nil, true
-			// }
-			//something wrong in tcp server
-			//or login fail
-			fmt.Println("http read server:", data)
-			// return Util.ResFailStr, false
 			return nil, false
 		}
-		// case "home":
-		// 	{
-		// 		gob.Register(new(Util.ResponseFromServer))
-		// 		gob.Register(new(Util.RealUser))
-		// 		decoder := gob.NewDecoder(tcpconn)
-		// 		var tmp Util.ResponseFromServer
-		// 		err := decoder.Decode(&tmp)
-		// 		if err != nil {
-		// 			log.Println("home decode err")
-		// 			panic(err)
-		// 		}
-		// 		// Util.FailFastCheckErr(err)
-		// 		if !tmp.Success {
-		// 			//token expires or not correct
-		// 			if tmp.TcpData == nil {
-		// 				return nil, false
-		// 			}
-		// 			//token pass
-		// 			//but
-		// 			fmt.Println("redis cache not update")
-		// 			return tmp.TcpData.(*Util.RealUser), true
-		// 		}
-		// 		return tmp.TcpData.(*Util.RealUser), true
-		// 	}
-		// case "changeNickName":
-		// 	{
-		// 		decoder := gob.NewDecoder(tcpconn)
-		// 		var tmp Util.ResponseFromServer
-		// 		err := decoder.Decode(&tmp)
-		// 		log.Println("changenickname recveive:", tmp)
-		// 		if err != nil {
-		// 			log.Println("changenickname decode err", err)
-		// 		}
-		// 		// Util.FailFastCheckErr(err)
-		// 		if !tmp.Success {
-		// 			//token expires or not correct
-		// 			return nil, false
-		// 		}
+	case "home":
+		{
+			for {
+				// bufio.NewReader(tcpconn)
+				size, cerr := tcpconn.Read(buff)
+				// .Read(buff)
+				if cerr != nil {
+					fmt.Println("home buferr", cerr)
+					panic(cerr)
+				}
+				if size == 0 {
+					fmt.Println("home nothing in conn")
+					return nil, false
+				}
 
-		// 		return nil, true
-		// 	}
-		// case "uploadAvatar":
-		// 	{
-		// 		gob.Register(new(Util.ResponseFromServer))
-		// 		decoder := gob.NewDecoder(tcpconn)
-		// 		var tmp Util.ResponseFromServer
-		// 		err := decoder.Decode(&tmp)
-		// 		if err != nil {
-		// 			log.Println("uploadavatar decode err")
-		// 			panic(err)
-		// 		}
-		// 		// Util.FailFastCheckErr(err)
+				tmp := &data.ResponseFromServer{}
+				tmpErr := proto.Unmarshal(buff[:size], tmp)
+				if tmpErr != nil {
+					fmt.Println("http home unmarshal err", tmpErr)
+					panic(tmpErr)
+				}
 
-		// 		return nil, true
-		// 	}
-		// case "logout":
-		// 	{
-		// 		gob.Register(new(Util.ResponseFromServer))
+				if tmp.GetSuccess() {
+					//token expires or not correct
+					if tmp.GetTcpData() == nil {
+						return nil, false
+					}
+					tcpData := &data.RealUser{}
+					tcpErr := proto.Unmarshal(tmp.GetTcpData(), tcpData)
+					if tcpErr != nil {
+						panic(tcpErr)
+					}
+					//token pass
+					//but
+					fmt.Println("redis cache not update")
 
-		// 		decoder := gob.NewDecoder(tcpconn)
-		// 		var tmp Util.ResponseFromServer
-		// 		err := decoder.Decode(&tmp)
-		// 		if err != nil {
-		// 			log.Println("logout decode err")
-		// 			panic(err)
-		// 		}
-		// 		// Util.FailFastCheckErr(err)
-		// 		return tmp.TcpData, tmp.Success
-		// 	}
+					return tcpData, true
+				}
+			}
+			return nil, false
+		}
+	// case "changeNickName":
+	// 	{
+	// 		decoder := gob.NewDecoder(tcpconn)
+	// 		var tmp Util.ResponseFromServer
+	// 		err := decoder.Decode(&tmp)
+	// 		log.Println("changenickname recveive:", tmp)
+	// 		if err != nil {
+	// 			log.Println("changenickname decode err", err)
+	// 		}
+	// 		// Util.FailFastCheckErr(err)
+	// 		if !tmp.Success {
+	// 			//token expires or not correct
+	// 			return nil, false
+	// 		}
+
+	// 		return nil, true
+	// 	}
+	// case "uploadAvatar":
+	// 	{
+	// 		gob.Register(new(Util.ResponseFromServer))
+	// 		decoder := gob.NewDecoder(tcpconn)
+	// 		var tmp Util.ResponseFromServer
+	// 		err := decoder.Decode(&tmp)
+	// 		if err != nil {
+	// 			log.Println("uploadavatar decode err")
+	// 			panic(err)
+	// 		}
+	// 		// Util.FailFastCheckErr(err)
+
+	// 		return nil, true
+	// 	}
+	case "logout":
+		{
+			for {
+				// bufio.NewReader(tcpconn)
+				size, cerr := tcpconn.Read(buff)
+				// .Read(buff)
+				if cerr != nil {
+					fmt.Println("logout buferr", cerr)
+					panic(cerr)
+				}
+				if size == 0 {
+					fmt.Println("logout nothing in conn")
+					return nil, false
+				}
+
+				tmp := &data.ResponseFromServer{}
+				tmpErr := proto.Unmarshal(buff[:size], tmp)
+				if tmpErr != nil {
+					fmt.Println("http logout unmarshal err", tmpErr)
+					panic(tmpErr)
+				}
+				return tmp.GetTcpData(), tmp.GetSuccess()
+
+			}
+			// gob.Register(new(Util.ResponseFromServer))
+
+			// decoder := gob.NewDecoder(tcpconn)
+			// var tmp Util.ResponseFromServer
+			// err := decoder.Decode(&tmp)
+			// if err != nil {
+			// 	log.Println("logout decode err")
+			// 	panic(err)
+			// }
+
+			// Util.FailFastCheckErr(err)
+
+			return nil, false
+		}
 	}
 	return nil, false
 
@@ -322,6 +380,7 @@ func loginHandler(w http.ResponseWriter, r *http.Request) {
 		if errget != nil {
 			panic(errget)
 		}
+		// tcpconn.SetReadDeadline(time.Now().Add(5 * time.Second))
 		fmt.Println("tcp conn:", tcpconn.RemoteAddr().String())
 		defer tcpconn.Close()
 
@@ -400,79 +459,87 @@ func loginHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 //after login //todo
-// func homeHandler(w http.ResponseWriter, r *http.Request) {
+func homeHandler(w http.ResponseWriter, r *http.Request) {
 
-// 	if r.Method == http.MethodGet {
-// 		t := template.Must(template.ParseFiles("../view/Home.html"))
-// 		cookieuser, erruser := r.Cookie("username")
-// 		cookietoken, errtoken := r.Cookie("token")
-// 		if erruser != nil {
-// 			fmt.Println("cookie home user", erruser)
-// 			http.Redirect(w, r, "/login", http.StatusFound)
-// 			t.Execute(w, nil)
-// 			return
-// 		}
-// 		if errtoken != nil {
-// 			fmt.Println("cookie home token", errtoken)
-// 			http.Redirect(w, r, "/login", http.StatusFound)
-// 			t.Execute(w, nil)
-// 			return
-// 		}
+	if r.Method == http.MethodGet {
+		t := template.Must(template.ParseFiles("../view/Home.html"))
+		cookieuser, erruser := r.Cookie("username")
+		cookietoken, errtoken := r.Cookie("token")
+		if erruser != nil {
+			fmt.Println("cookie home user", erruser)
+			http.Redirect(w, r, "/login", http.StatusFound)
+			t.Execute(w, nil)
+			return
+		}
+		if errtoken != nil {
+			fmt.Println("cookie home token", errtoken)
+			http.Redirect(w, r, "/login", http.StatusFound)
+			t.Execute(w, nil)
+			return
+		}
 
-// 		tcpconn, errget := connpool.Get()
-// 		if errget != nil {
-// 			panic(errget)
-// 		}
-// 		// Util.FailFastCheckErr(errget)
-// 		log.Println("home rendering")
+		tcpconn, errget := connpool.Get()
+		if errget != nil {
+			panic(errget)
+		}
+		// tcpconn.SetReadDeadline(time.Now().Add(5 * time.Second))
+		defer tcpconn.Close()
+		// Util.FailFastCheckErr(errget)
+		log.Println("home rendering")
 
-// 		//send to tcp server
-// 		tokenwithusername := &Util.InfoWithUsername{Username: cookieuser.Value, Info: cookietoken.Value}
-// 		tmpdata := &Util.ToServerData{}
-// 		tmpdata.Ctype = "home"
-// 		fmt.Println("http cookie ", cookieuser.Value)
-// 		tmpdata.HttpData = tokenwithusername
+		//send to tcp server
+		tokenwithusername := &data.InfoWithUsername{Username: proto.String(cookieuser.Value), Token: proto.String(cookietoken.Value)}
+		tokenwithusernameData, terr := proto.Marshal(tokenwithusername)
+		if terr != nil {
+			panic(terr)
+		}
+		tmp := &data.ToServerData{Ctype: proto.String("home"), Httpdata: tokenwithusernameData}
+		tmpData, tmpErr := proto.Marshal(tmp)
+		if tmpErr != nil {
+			panic(tmpErr)
+		}
+		fmt.Println("http cookie ", cookieuser.Value)
+		tcpconn.Write(tmpData)
+		// fmt.Println("do sth ")
+		// gob.Register(new(Util.InfoWithUsername))
+		// gob.Register(new(Util.ToServerData))
+		// encoder := gob.NewEncoder(tcpconn)
+		// encoder.Encode(tmpdata)
 
-// 		// fmt.Println("do sth ")
-// 		gob.Register(new(Util.InfoWithUsername))
-// 		gob.Register(new(Util.ToServerData))
-// 		encoder := gob.NewEncoder(tcpconn)
-// 		encoder.Encode(tmpdata)
+		//loop listen response from tcp server
+		// for {
+		// readchan := make(chan int)
+		log.Println("home render loop", tmpData)
+		datar, successHome := readServer(w, r, tcpconn, "home")
+		//token correct
+		if successHome {
+			ruser := datar.(*data.RealUser)
+			t.Execute(w, &ruser)
+			return
+		}
+		//token not correct
+		//clear cookie and then redirect
+		log.Println("token expires home page")
+		setcookieuser := http.Cookie{
+			Name:   "username",
+			MaxAge: -1,
+			Path:   "/",
+		}
+		setcookietoken := http.Cookie{
+			Name:   "token",
+			MaxAge: -1,
+			Path:   "/",
+		}
+		http.SetCookie(w, &setcookieuser)
+		http.SetCookie(w, &setcookietoken)
+		http.Redirect(w, r, "/login", http.StatusFound)
+		return
+		// }
+		// }
 
-// 		//loop listen response from tcp server
-// 		// for {
-// 		readchan := make(chan int)
-// 		log.Println("home render loop", tmpdata)
-// 		data, successHome := readServer(w, r, tcpconn, "home", readchan)
-// 		//token correct
-// 		if successHome {
-// 			ruser := data.(*Util.RealUser)
-// 			t.Execute(w, ruser)
-// 			return
-// 		}
-// 		//token not correct
-// 		//clear cookie and then redirect
-// 		log.Println("token expires home page")
-// 		setcookieuser := http.Cookie{
-// 			Name:   "username",
-// 			MaxAge: -1,
-// 			Path:   "/",
-// 		}
-// 		setcookietoken := http.Cookie{
-// 			Name:   "token",
-// 			MaxAge: -1,
-// 			Path:   "/",
-// 		}
-// 		http.SetCookie(w, &setcookieuser)
-// 		http.SetCookie(w, &setcookietoken)
-// 		http.Redirect(w, r, "/login", http.StatusFound)
-// 		return
-// 		// }
-// 		// }
+	}
 
-// 	}
-
-// }
+}
 
 //upload avatar handler
 // func uploadHandler(w http.ResponseWriter, r *http.Request) {

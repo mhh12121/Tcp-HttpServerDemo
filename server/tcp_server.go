@@ -40,7 +40,7 @@ func main() {
 	if err != nil {
 		fmt.Println("tcp listen failed:", err)
 	}
-	// defer ln.Close()
+
 	//need keep connection
 
 	//keep listening for multiple connections(clients)
@@ -56,50 +56,34 @@ func main() {
 	}
 
 }
-func writeServer_tcp(conn net.Conn) {
 
-}
-func readServer_tcp(conn net.Conn) {
-
-}
 func handleAll(conn net.Conn) {
 	buff := make([]byte, 1024)
 	// c := bufio.NewReader(conn)
-
+	defer conn.Close()
 	//this for loop is for one connection with multiple requests!!!
 	for {
+
 		size, cerr := conn.Read(buff)
 		if cerr != nil {
 			fmt.Println("buferr", cerr)
 			panic(cerr)
 		}
+
 		// _, ioerr := io.ReadFull(c, buff[:int(size)])
 		// if ioerr != nil {
 		// 	fmt.Println(ioerr)
 		// 	panic(ioerr)
 		// }
-		// gob.Register(new(Util.RealUser))
-		// gob.Register(new(Util.User))
-		// gob.Register(new(Util.ToServerData))
-		// gob.Register(new(Util.InfoWithUsername))
-		// // gob.Register(new(Util.Avatar))
-		// //Decoder blocks here???
-		// decoder := gob.NewDecoder(conn)
+
 		toServerD := &data.ToServerData{}
 		dataErr := proto.Unmarshal(buff[:int(size)], toServerD)
 		if dataErr != nil {
 			fmt.Println("proto", dataErr)
 			panic(dataErr)
 		}
-		// err := decoder.Decode(&data)
-		// if err != nil {
-		// 	log.Println("tcp handle all decode err", err)
-		// 	panic(err)
-		// }
-		// Util.FailSafeCheckErr("tcp decode err", err)
-		// log.Println("tcp decode", data)
 
-		//according to Ctype to diffentiate the response
+		//according to Ctype to set the response
 		switch *toServerD.Ctype {
 		case "login":
 			tmpdata := &data.User{}
@@ -109,54 +93,67 @@ func handleAll(conn net.Conn) {
 				panic(tmperr)
 			}
 			// tmpdata := data.Httpdata
+			service.LoginHandle(conn, *tmpdata)
+		//Home tcp
+		case "home":
+			tmpdata := &data.InfoWithUsername{}
+			tmperr := proto.Unmarshal(toServerD.Httpdata, tmpdata)
+			if tmperr != nil {
+				fmt.Println("login err:", tmperr)
+				panic(tmperr)
+			}
 
-			loginHandle(conn, *tmpdata)
-			// case "home":
-			// 	tmpdata := data.HttpData.(*Util.InfoWithUsername)
-			// 	log.Println("home tcp decode data", tmpdata)
-			// 	homeHandle(conn, tmpdata.Username, tmpdata.Info)
-			// case "uploadAvatar":
-			// 	tmpdata := data.HttpData.(*Util.InfoWithUsername)
-			// 	fmt.Println("tcp upload file decode data", tmpdata)
-			// 	uploadHandle(conn, tmpdata.Username, tmpdata.Info, tmpdata.Token)
+			log.Println("home tcp decode data", tmpdata)
+			service.HomeHandle(conn, tmpdata.GetUsername(), tmpdata.GetToken())
 
-			// case "changeNickName":
-			// 	tmpdata := data.HttpData.(*Util.InfoWithUsername)
-			// 	fmt.Println("tcp change nickname decode data ", tmpdata)
-			// 	changeNickNameHandle(conn, tmpdata.Username, tmpdata.Info, tmpdata.Token)
+		// case "uploadAvatar":
+		// 	tmpdata := data.HttpData.(*Util.InfoWithUsername)
+		// 	fmt.Println("tcp upload file decode data", tmpdata)
+		// 	uploadHandle(conn, tmpdata.Username, tmpdata.Info, tmpdata.Token)
 
-			// case "logout":
-			// 	tmpdata := data.HttpData.(*Util.InfoWithUsername)
-			// 	fmt.Println("tcp change logout decode data ", tmpdata)
-			// 	logoutHandle(conn, tmpdata.Username, tmpdata.Info)
+		// case "changeNickName":
+		// 	tmpdata := data.HttpData.(*Util.InfoWithUsername)
+		// 	fmt.Println("tcp change nickname decode data ", tmpdata)
+		// 	changeNickNameHandle(conn, tmpdata.Username, tmpdata.Info, tmpdata.Token)
+
+		case "logout":
+			tmpdata := &data.InfoWithUsername{}
+			tmperr := proto.Unmarshal(toServerD.Httpdata, tmpdata)
+			if tmperr != nil {
+				fmt.Println("logout err:", tmperr)
+				panic(tmperr)
+			}
+			fmt.Println("tcp change logout decode data ", tmpdata)
+			// logoutHandle(conn, tmpdata.Username, tmpdata.Info)
+			service.LogoutHandle(conn, tmpdata.GetUsername(), tmpdata.GetToken())
 		}
 
 	}
 }
 
-func loginHandle(conn net.Conn, ruser data.User) {
-	service.LoginHandle(conn, ruser)
-}
+// func loginHandle(conn net.Conn, ruser data.User) {
+// 	service.LoginHandle(conn, ruser)
+// }
 
-func logoutHandle(conn net.Conn, username string, token interface{}) {
-	service.LogoutHandle(conn, username, token)
-	// Util.FailSafeCheckErr("logout encode err", errreturn)
-
-}
-func homeHandle(conn net.Conn, username string, token interface{}) {
-	service.HomeHandle(conn, username, token)
-
-}
-
+// func logoutHandle(conn net.Conn, username string, token interface{}) {
+// 	service.LogoutHandle(conn, username, token)
 //
-func uploadHandle(conn net.Conn, username string, avatar interface{}, token string) {
-	service.UploadHandle(conn, username, avatar, token)
-	// Util.FailSafeCheckErr("uploadfile encode err", errreturn)
-	// return success
-}
 
-//
-func changeNickNameHandle(conn net.Conn, username string, nickname interface{}, token string) {
-	service.ChangeNickNameHandle(conn, username, nickname, token)
+// }
+// func homeHandle(conn net.Conn, username string, token interface{}) {
+// 	service.HomeHandle(conn, username, token)
 
-}
+// }
+
+// //
+// func uploadHandle(conn net.Conn, username string, avatar interface{}, token string) {
+// 	service.UploadHandle(conn, username, avatar, token)
+// 	// Util.FailSafeCheckErr("uploadfile encode err", errreturn)
+// 	// return success
+// }
+
+// //
+// func changeNickNameHandle(conn net.Conn, username string, nickname interface{}, token string) {
+// 	service.ChangeNickNameHandle(conn, username, nickname, token)
+
+// }

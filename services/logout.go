@@ -1,12 +1,12 @@
 package service
 
 import (
-	"encoding/gob"
+	"fmt"
 	"log"
 	"net"
 
 	dao "entry_task/DAO"
-	// data "entry_task/data"
+
 	data "entry_task/Data"
 
 	"github.com/golang/protobuf/proto"
@@ -24,11 +24,21 @@ func LogoutHandle(conn net.Conn, username string, token interface{}) {
 	// data.FailSafeCheckErr("invalid logout usr", err)
 	//return to logout handle
 	success := (err == nil)
-	gob.Register(new(data.ResponseFromServer))
-	returnValue := data.ResponseFromServer{Success: proto.Bool(success), TcpData: nil}
-	encoder := gob.NewEncoder(conn)
-	errreturn := encoder.Encode(returnValue)
-	if errreturn != nil {
-		log.Println("logout encode err", errreturn)
+	// gob.Register(new(data.ResponseFromServer))
+
+	returnValue := &data.ResponseFromServer{Success: proto.Bool(success), TcpData: nil}
+	returnValueData, rErr := proto.Marshal(returnValue)
+	if rErr != nil {
+		fmt.Println("logout marshal err:", rErr)
+		panic(rErr)
 	}
+	_, writeErr := conn.Write(returnValueData)
+	if writeErr != nil {
+		fmt.Println("logout write conn err,", writeErr)
+	}
+	// encoder := gob.NewEncoder(conn)
+	// errreturn := encoder.Encode(returnValue)
+	// if errreturn != nil {
+	// 	log.Println("logout encode err", errreturn)
+	// }
 }

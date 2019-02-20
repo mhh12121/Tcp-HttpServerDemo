@@ -25,7 +25,7 @@ func LoginHandle(conn net.Conn, ruser data.User) {
 	if errtoken != nil {
 		log.Println("login checktoken cache err", errtoken)
 	}
-	// data.FailSafeCheckErr("login checktoken cache err", errtoken)
+
 	//todo
 	//some problems here(consistency)
 	//1.checktoken in redis success then return success msg to http
@@ -102,11 +102,11 @@ func LoginHandle(conn net.Conn, ruser data.User) {
 		fmt.Println("errReturn:", errReturn)
 		panic(errReturn)
 	}
-	// writer := bufio.NewWriter(conn)
 
+	log.Println("login handle tcp write next")
 	_, writeErr := conn.Write(returnValueData)
 	if writeErr != nil {
-		fmt.Println("writeErr", writeErr)
+		fmt.Println("login writeErr", writeErr)
 		panic(writeErr)
 	}
 	// encoder := gob.NewEncoder(conn)

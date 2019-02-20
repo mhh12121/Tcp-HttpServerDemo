@@ -1,7 +1,6 @@
 package service
 
 import (
-	"encoding/gob"
 	"fmt"
 	"log"
 	"net"
@@ -24,13 +23,19 @@ func HomeHandle(conn net.Conn, username string, token interface{}) {
 	//token not exists or not correct
 	if !exists || errtoken != nil {
 		log.Println("home checktoken cache err", errtoken)
-		gob.Register(new(data.ResponseFromServer))
-		returnValue := data.ResponseFromServer{Success: proto.Bool(false), TcpData: nil}
-		encoder := gob.NewEncoder(conn)
-		errreturn := encoder.Encode(returnValue)
-		if errreturn != nil {
-			log.Println("home auth encode direct from cache err", errreturn)
+		// gob.Register(new(data.ResponseFromServer))
+
+		returnValue := &data.ResponseFromServer{Success: proto.Bool(false), TcpData: nil}
+		returnValueData, rErr := proto.Marshal(returnValue)
+		if rErr != nil {
+			panic(rErr)
 		}
+		conn.Write(returnValueData)
+		// encoder := gob.NewEncoder(conn)
+		// errreturn := encoder.Encode(returnValue)
+		// if errreturn != nil {
+		// 	log.Println("home auth encode direct from cache err", errreturn)
+		// }
 		// data.FailSafeCheckErr("home auth encode direct from cache err", errreturn)
 		return
 	}
@@ -44,29 +49,30 @@ func HomeHandle(conn net.Conn, username string, token interface{}) {
 	//cache still valid
 	//
 	if ok && err == nil {
-		log.Println("tcp home handle cache get info okay", user)
+		log.Println("tcp home handle cache get info okay", *user)
 		// gob.Register(new(data.RealUser))
 		userData, userErr := proto.Marshal(user)
 		if userErr != nil {
 			panic(userErr)
 		}
 		tohttp := &data.ResponseFromServer{Success: proto.Bool(true), TcpData: userData}
-		encoder := gob.NewEncoder(conn)
-		errreturn := encoder.Encode(tohttp)
-		if errreturn != nil {
-			panic(errreturn)
+		tohttpData, toHttpErr := proto.Marshal(tohttp)
+		if toHttpErr != nil {
+			fmt.Println("tohttperr:", toHttpErr)
+			panic(toHttpErr)
 		}
-		// data.FailSafeCheckErr("no this ", errreturn)
+		conn.Write(tohttpData)
+		// encoder := gob.NewEncoder(conn)
+		// errreturn := encoder.Encode(tohttp)
+		// if errreturn != nil {
+		// 	panic(errreturn)
+		// }
+
 		return
 	}
 
 	//cache expires or not exists then go to mysql
 	userdb, okdb := dao.AllInfo(username)
-	// var userdb_data data.RealUser
-	// erruser := proto.Unmarshal(userdb, userdb_data)
-	// if erruser != nil {
-
-	// }
 	//retrieve from mysql success
 	if okdb {
 		//it will also save it to cache
@@ -79,18 +85,22 @@ func HomeHandle(conn net.Conn, username string, token interface{}) {
 		//save cache success
 		//here how
 		// if successCache {
-		gob.Register(new(data.RealUser))
+
 		userdbData, userdbErr := proto.Marshal(userdb)
 		if userdbErr != nil {
 			panic(userdbErr)
 		}
 		tohttp := &data.ResponseFromServer{Success: proto.Bool(true), TcpData: userdbData}
-		encoder := gob.NewEncoder(conn)
-		errreturn := encoder.Encode(tohttp)
-		if errreturn != nil {
-			panic(errreturn)
+		tohttpData, toHttpErr := proto.Marshal(tohttp)
+		if toHttpErr != nil {
+			fmt.Println("tohttperr:", toHttpErr)
+			panic(toHttpErr)
 		}
-		// data.FailSafeCheckErr("home handle encode err", errreturn)
+		_, writeErr := conn.Write(tohttpData)
+		if writeErr != nil {
+			fmt.Println("home write conn err,", writeErr)
+		}
+
 		return
 		// }
 
