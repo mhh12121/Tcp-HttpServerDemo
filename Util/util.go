@@ -33,41 +33,41 @@ var CookieExpires = time.Now().Add(1 * time.Hour)
 // var TokenExpires = time.Now().Add(1 * time.Minute)
 
 //uniform data to tcp server
-type ToServerData struct {
-	Ctype    string
-	HttpData interface{}
-	// Errcode  int
-}
+// type ToServerData struct {
+// 	Ctype    string
+// 	HttpData interface{}
+// 	// Errcode  int
+// }
 
-//Uniform data from tcp server
-type ResponseFromServer struct {
-	Success bool
-	TcpData interface{}
-	// Errcode int
-}
+// //Uniform data from tcp server
+// type ResponseFromServer struct {
+// 	Success bool
+// 	TcpData interface{}
+// 	// Errcode int
+// }
 
 //success response from server
 
 //RealUser is the home page data
-type RealUser struct {
-	Username string
-	Nickname string
-	Avatar   string
-}
+// type RealUser struct {
+// 	Username string
+// 	Nickname string
+// 	Avatar   string
+// }
 
-//User is login data
-type User struct {
-	Username string
-	Password string
-	Token    string
-}
+// //User is login data
+// type User struct {
+// 	Username string
+// 	Password string
+// 	Token    string
+// }
 
-//Info is for changing avatar data and nickname
-type InfoWithUsername struct {
-	Username string
-	Info     interface{}
-	Token    string
-}
+// //Info is for changing avatar data and nickname
+// type InfoWithUsername struct {
+// 	Username string
+// 	Info     interface{}
+// 	Token    string
+// }
 
 // func FailFastCheckErr(err error) {
 // 	if err != nil {

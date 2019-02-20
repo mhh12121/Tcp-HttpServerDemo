@@ -1,10 +1,7 @@
 package service
 
 import (
-	"encoding/gob"
 	"net"
-
-	"entry_task/Util"
 )
 
 type RpcHandle struct {
@@ -46,33 +43,33 @@ func (rpc *RpcHandle) Get() error {
 // }
 
 //send to server
-func (rpc *RpcHandle) Set(readchan chan int) error {
-	switch rpc.Ctype {
-	case "login":
-		{
-			gob.Register(new(Util.User))
-			gob.Register(new(Util.RealUser))
-			gob.Register(new(Util.ToServerData))
-			encoder := gob.NewEncoder(rpc.Con)
-			tmpdata := rpc.Data.(*Util.ToServerData)
-			err := encoder.Encode(tmpdata)
-			if err != nil {
-				panic(err)
-			}
-			// readchan <- 1
-			return err
-		}
-	case "logout":
-		{
+// func (rpc *RpcHandle) Set(readchan chan int) error {
+// 	switch rpc.Ctype {
+// 	case "login":
+// 		{
+// 			gob.Register(new(Util.User))
+// 			gob.Register(new(Util.RealUser))
+// 			gob.Register(new(Util.ToServerData))
+// 			encoder := gob.NewEncoder(rpc.Con)
+// 			tmpdata := rpc.Data.(*Util.ToServerData)
+// 			err := encoder.Encode(tmpdata)
+// 			if err != nil {
+// 				panic(err)
+// 			}
+// 			// readchan <- 1
+// 			return err
+// 		}
+// 	case "logout":
+// 		{
 
-		}
-	case "updateNickName":
-		{
+// 		}
+// 	case "updateNickName":
+// 		{
 
-		}
-	case "":
-		{
-		}
-	}
-	return nil
-}
+// 		}
+// 	case "":
+// 		{
+// 		}
+// 	}
+// 	return nil
+// }

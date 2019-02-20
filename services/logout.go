@@ -6,7 +6,10 @@ import (
 	"net"
 
 	dao "entry_task/DAO"
-	"entry_task/Util"
+	// data "entry_task/data"
+	data "entry_task/Data"
+
+	"github.com/golang/protobuf/proto"
 )
 
 // type LogoutService struct {
@@ -18,11 +21,11 @@ func LogoutHandle(conn net.Conn, username string, token interface{}) {
 	if err != nil {
 		log.Println("invalid logout err", err)
 	}
-	// Util.FailSafeCheckErr("invalid logout usr", err)
+	// data.FailSafeCheckErr("invalid logout usr", err)
 	//return to logout handle
 	success := (err == nil)
-	gob.Register(new(Util.ResponseFromServer))
-	returnValue := Util.ResponseFromServer{Success: success, TcpData: nil}
+	gob.Register(new(data.ResponseFromServer))
+	returnValue := data.ResponseFromServer{Success: proto.Bool(success), TcpData: nil}
 	encoder := gob.NewEncoder(conn)
 	errreturn := encoder.Encode(returnValue)
 	if errreturn != nil {

@@ -1,0 +1,29 @@
+syntax = "proto2";
+message toServerData{
+    required string ctype = 1;
+    optional bytes httpdata=2;
+}
+message ResponseFromServer {
+	required bool Success=1;
+	optional bytes tcpData=2;
+	// Errcode int
+}
+message RealUser {
+	required string Username=1;
+	required string Nickname=2;
+	required string Avatar=3;
+}
+
+//User is login data
+message User {
+	required string Username=1;
+	required string Password=2;
+	required string Token=3;
+}
+
+//Info is for changing avatar data and nickname
+message InfoWithUsername {
+	required string Username=1;
+	optional bytes Info=2;
+	required string Token=3;
+}

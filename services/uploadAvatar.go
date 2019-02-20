@@ -7,24 +7,26 @@ import (
 	"net"
 
 	dao "entry_task/DAO"
-	"entry_task/Util"
+	data "entry_task/Data"
+
+	"github.com/golang/protobuf/proto"
 )
 
 func UploadHandle(conn net.Conn, username string, avatar interface{}, token string) {
 	exists, errtoken := dao.CheckToken(username, token)
-	// Util.FailSafeCheckErr("upload checktoken cache err", errtoken)
+	// data.FailSafeCheckErr("upload checktoken cache err", errtoken)
 
 	//token not exists or not correct
 	if !exists || errtoken != nil {
 		log.Println("upload checktoken cache err", errtoken)
-		gob.Register(new(Util.ResponseFromServer))
-		returnValue := Util.ResponseFromServer{Success: false, TcpData: nil}
+		gob.Register(new(data.ResponseFromServer))
+		returnValue := data.ResponseFromServer{Success: proto.Bool(false), TcpData: nil}
 		encoder := gob.NewEncoder(conn)
 		errreturn := encoder.Encode(returnValue)
 		if errreturn != nil {
 			log.Println("home auth encode direct from cache err", errreturn)
 		}
-		// Util.FailSafeCheckErr("home auth encode direct from cache err", errreturn)
+		// data.FailSafeCheckErr("home auth encode direct from cache err", errreturn)
 		return
 	}
 	success := dao.UpdateAvatar(username, "/"+avatar.(string))
@@ -40,15 +42,15 @@ func UploadHandle(conn net.Conn, username string, avatar interface{}, token stri
 			// return
 		}
 
-		// gob.Register(new(Util.ResponseFromServer))
-		// tohttp := &Util.ResponseFromServer{Success: success, TcpData: nil}
+		// gob.Register(new(data.ResponseFromServer))
+		// tohttp := &data.ResponseFromServer{Success: success, TcpData: nil}
 		// encoder := gob.NewEncoder(conn)
 		// errreturn := encoder.Encode(tohttp)
-		// Util.FailSafeCheckErr("uploadfile encode err", errreturn)
+		// data.FailSafeCheckErr("uploadfile encode err", errreturn)
 	}
 	//mysql update not success
-	gob.Register(new(Util.ResponseFromServer))
-	tohttp := &Util.ResponseFromServer{Success: success, TcpData: nil}
+	gob.Register(new(data.ResponseFromServer))
+	tohttp := &data.ResponseFromServer{Success: proto.Bool(success), TcpData: nil}
 	encoder := gob.NewEncoder(conn)
 	errreturn := encoder.Encode(tohttp)
 	if errreturn != nil {

@@ -1,7 +1,6 @@
 package main
 
 import (
-	"encoding/gob"
 	"fmt"
 	"log"
 	"net"
@@ -10,11 +9,16 @@ import (
 
 	"entry_task/Conf"
 	dao "entry_task/DAO"
-	"entry_task/Util"
+	data "entry_task/Data"
 	service "entry_task/services"
 
 	_ "github.com/go-sql-driver/mysql"
+	"github.com/golang/protobuf/proto"
 )
+
+type TcpServer struct {
+	Con net.Conn
+}
 
 func init() {
 	_, filepath, _, _ := runtime.Caller(0)
@@ -52,56 +56,85 @@ func main() {
 	}
 
 }
+func writeServer_tcp(conn net.Conn) {
 
+}
+func readServer_tcp(conn net.Conn) {
+
+}
 func handleAll(conn net.Conn) {
+	buff := make([]byte, 1024)
+	// c := bufio.NewReader(conn)
+
 	//this for loop is for one connection with multiple requests!!!
 	for {
-		gob.Register(new(Util.RealUser))
-		gob.Register(new(Util.User))
-		gob.Register(new(Util.ToServerData))
-		gob.Register(new(Util.InfoWithUsername))
-		// gob.Register(new(Util.Avatar))
-		//Decoder blocks here???
-		decoder := gob.NewDecoder(conn)
-		var data Util.ToServerData
-		err := decoder.Decode(&data)
-		if err != nil {
-			log.Println("tcp handle all decode err", err)
-			panic(err)
+		size, cerr := conn.Read(buff)
+		if cerr != nil {
+			fmt.Println("buferr", cerr)
+			panic(cerr)
 		}
+		// _, ioerr := io.ReadFull(c, buff[:int(size)])
+		// if ioerr != nil {
+		// 	fmt.Println(ioerr)
+		// 	panic(ioerr)
+		// }
+		// gob.Register(new(Util.RealUser))
+		// gob.Register(new(Util.User))
+		// gob.Register(new(Util.ToServerData))
+		// gob.Register(new(Util.InfoWithUsername))
+		// // gob.Register(new(Util.Avatar))
+		// //Decoder blocks here???
+		// decoder := gob.NewDecoder(conn)
+		toServerD := &data.ToServerData{}
+		dataErr := proto.Unmarshal(buff[:int(size)], toServerD)
+		if dataErr != nil {
+			fmt.Println("proto", dataErr)
+			panic(dataErr)
+		}
+		// err := decoder.Decode(&data)
+		// if err != nil {
+		// 	log.Println("tcp handle all decode err", err)
+		// 	panic(err)
+		// }
 		// Util.FailSafeCheckErr("tcp decode err", err)
-		log.Println("tcp decode", data)
+		// log.Println("tcp decode", data)
 
 		//according to Ctype to diffentiate the response
-		switch data.Ctype {
+		switch *toServerD.Ctype {
 		case "login":
-			tmpdata := data.HttpData.(*Util.User)
-			log.Println("login tcp decode data", tmpdata)
-			loginHandle(conn, tmpdata)
-		case "home":
-			tmpdata := data.HttpData.(*Util.InfoWithUsername)
-			log.Println("home tcp decode data", tmpdata)
-			homeHandle(conn, tmpdata.Username, tmpdata.Info)
-		case "uploadAvatar":
-			tmpdata := data.HttpData.(*Util.InfoWithUsername)
-			fmt.Println("tcp upload file decode data", tmpdata)
-			uploadHandle(conn, tmpdata.Username, tmpdata.Info, tmpdata.Token)
+			tmpdata := &data.User{}
+			tmperr := proto.Unmarshal(toServerD.Httpdata, tmpdata)
+			if tmperr != nil {
+				fmt.Println("login err:", tmperr)
+				panic(tmperr)
+			}
+			// tmpdata := data.Httpdata
 
-		case "changeNickName":
-			tmpdata := data.HttpData.(*Util.InfoWithUsername)
-			fmt.Println("tcp change nickname decode data ", tmpdata)
-			changeNickNameHandle(conn, tmpdata.Username, tmpdata.Info, tmpdata.Token)
+			loginHandle(conn, *tmpdata)
+			// case "home":
+			// 	tmpdata := data.HttpData.(*Util.InfoWithUsername)
+			// 	log.Println("home tcp decode data", tmpdata)
+			// 	homeHandle(conn, tmpdata.Username, tmpdata.Info)
+			// case "uploadAvatar":
+			// 	tmpdata := data.HttpData.(*Util.InfoWithUsername)
+			// 	fmt.Println("tcp upload file decode data", tmpdata)
+			// 	uploadHandle(conn, tmpdata.Username, tmpdata.Info, tmpdata.Token)
 
-		case "logout":
-			tmpdata := data.HttpData.(*Util.InfoWithUsername)
-			fmt.Println("tcp change logout decode data ", tmpdata)
-			logoutHandle(conn, tmpdata.Username, tmpdata.Info)
+			// case "changeNickName":
+			// 	tmpdata := data.HttpData.(*Util.InfoWithUsername)
+			// 	fmt.Println("tcp change nickname decode data ", tmpdata)
+			// 	changeNickNameHandle(conn, tmpdata.Username, tmpdata.Info, tmpdata.Token)
+
+			// case "logout":
+			// 	tmpdata := data.HttpData.(*Util.InfoWithUsername)
+			// 	fmt.Println("tcp change logout decode data ", tmpdata)
+			// 	logoutHandle(conn, tmpdata.Username, tmpdata.Info)
 		}
 
 	}
 }
 
-func loginHandle(conn net.Conn, ruser *Util.User) {
+func loginHandle(conn net.Conn, ruser data.User) {
 	service.LoginHandle(conn, ruser)
 }
 

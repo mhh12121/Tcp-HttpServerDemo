@@ -7,7 +7,9 @@ import (
 	"net"
 
 	dao "entry_task/DAO"
-	"entry_task/Util"
+	util "entry_task/Data"
+
+	"github.com/golang/protobuf/proto"
 )
 
 func ChangeNickNameHandle(conn net.Conn, username string, nickname interface{}, token string) {
@@ -17,8 +19,8 @@ func ChangeNickNameHandle(conn net.Conn, username string, nickname interface{}, 
 	// Util.FailSafeCheckErr("updatenickname checktoken cache err", errtoken)
 	if !exists || errtoken != nil {
 		//token expires or not correct
-		gob.Register(new(Util.ResponseFromServer))
-		tohttp := &Util.ResponseFromServer{Success: false, TcpData: nil}
+		gob.Register(new(util.ResponseFromServer))
+		tohttp := &util.ResponseFromServer{Success: proto.Bool(false), TcpData: nil}
 		encoder := gob.NewEncoder(conn)
 		errreturn := encoder.Encode(tohttp)
 		if errreturn != nil {
@@ -41,8 +43,8 @@ func ChangeNickNameHandle(conn net.Conn, username string, nickname interface{}, 
 			// return
 		}
 	}
-	gob.Register(new(Util.ResponseFromServer))
-	tohttp := &Util.ResponseFromServer{Success: success, TcpData: nil}
+	gob.Register(new(util.ResponseFromServer))
+	tohttp := &util.ResponseFromServer{Success: proto.Bool(success), TcpData: nil}
 	encoder := gob.NewEncoder(conn)
 	errreturn := encoder.Encode(tohttp)
 	if errreturn != nil {
