@@ -65,10 +65,9 @@ func LoginHandle(conn net.Conn, ruser data.User) {
 	//login fail
 	if !success || errorcheck != nil {
 		log.Println("password wrong! any error?:", errorcheck)
-		// gob.Register(new(data.ResponseFromServer))
-		// tcpdata_byte := make([]byte, 0)
-		returnValue := data.ResponseFromServer{Success: proto.Bool(false), TcpData: nil}
-		returnValueData, errReturn := proto.Marshal(&returnValue)
+
+		returnValue := &data.ResponseFromServer{Success: proto.Bool(false), TcpData: nil}
+		returnValueData, errReturn := proto.Marshal(returnValue)
 		if errReturn != nil {
 			panic(errReturn)
 		}
@@ -94,8 +93,7 @@ func LoginHandle(conn net.Conn, ruser data.User) {
 	// data.FailSafeCheckErr("login save cache err", tokenerr)
 	//login success
 	log.Println("login handle tcp")
-	// gob.Register(new(data.ResponseFromServer))
-	// tcpdata_byte := &data.
+
 	returnValue := &data.ResponseFromServer{Success: proto.Bool(true), TcpData: nil}
 	returnValueData, errReturn := proto.Marshal(returnValue)
 	if errReturn != nil {
@@ -109,11 +107,6 @@ func LoginHandle(conn net.Conn, ruser data.User) {
 		fmt.Println("login writeErr", writeErr)
 		panic(writeErr)
 	}
-	// encoder := gob.NewEncoder(conn)
-	// errreturn := encoder.Encode(returnValue)
-	// if errreturn != nil {
-	// 	log.Println("login auth encode err", errreturn)
-	// }
-	// data.FailSafeCheckErr("login auth encode err", errreturn)
+
 	return
 }

@@ -18,7 +18,7 @@ func HomeHandle(conn net.Conn, username string, token interface{}) {
 	//1. cookie still exists but token expires
 	//---solution: clear cookie first then redirect to login
 	//2. cookie expires but token exists
-	//---solution: login and refresh the token
+	//---solution: redirect to login??? and refresh the token
 
 	//token not exists or not correct
 	if !exists || errtoken != nil {
@@ -61,13 +61,11 @@ func HomeHandle(conn net.Conn, username string, token interface{}) {
 			fmt.Println("tohttperr:", toHttpErr)
 			panic(toHttpErr)
 		}
-		conn.Write(tohttpData)
-		// encoder := gob.NewEncoder(conn)
-		// errreturn := encoder.Encode(tohttp)
-		// if errreturn != nil {
-		// 	panic(errreturn)
-		// }
-
+		_, wErr := conn.Write(tohttpData)
+		if wErr != nil {
+			fmt.Println("home tcp write err")
+			panic(wErr)
+		}
 		return
 	}
 

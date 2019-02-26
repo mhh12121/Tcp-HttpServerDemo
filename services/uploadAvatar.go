@@ -1,7 +1,6 @@
 package service
 
 import (
-	"encoding/gob"
 	"fmt"
 	"log"
 	"net"
@@ -19,14 +18,17 @@ func UploadHandle(conn net.Conn, username string, avatar interface{}, token stri
 	//token not exists or not correct
 	if !exists || errtoken != nil {
 		log.Println("upload checktoken cache err", errtoken)
-		gob.Register(new(data.ResponseFromServer))
-		returnValue := data.ResponseFromServer{Success: proto.Bool(false), TcpData: nil}
-		encoder := gob.NewEncoder(conn)
-		errreturn := encoder.Encode(returnValue)
-		if errreturn != nil {
-			log.Println("home auth encode direct from cache err", errreturn)
+		// gob.Register(new(data.ResponseFromServer))
+		returnValue := &data.ResponseFromServer{Success: proto.Bool(false), TcpData: nil}
+		returnValueData, rErr := proto.Marshal(returnValue)
+		if rErr != nil {
+			panic(rErr)
 		}
-		// data.FailSafeCheckErr("home auth encode direct from cache err", errreturn)
+		_, wErr := conn.Write(returnValueData)
+		if wErr != nil {
+			panic(wErr)
+		}
+
 		return
 	}
 	success := dao.UpdateAvatar(username, "/"+avatar.(string))
@@ -41,19 +43,15 @@ func UploadHandle(conn net.Conn, username string, avatar interface{}, token stri
 			//do nothing
 			// return
 		}
-
-		// gob.Register(new(data.ResponseFromServer))
-		// tohttp := &data.ResponseFromServer{Success: success, TcpData: nil}
-		// encoder := gob.NewEncoder(conn)
-		// errreturn := encoder.Encode(tohttp)
-		// data.FailSafeCheckErr("uploadfile encode err", errreturn)
 	}
 	//mysql update not success
-	gob.Register(new(data.ResponseFromServer))
 	tohttp := &data.ResponseFromServer{Success: proto.Bool(success), TcpData: nil}
-	encoder := gob.NewEncoder(conn)
-	errreturn := encoder.Encode(tohttp)
-	if errreturn != nil {
-		log.Println("nickname encode err", errreturn)
+	tohttpData, tErr := proto.Marshal(tohttp)
+	if tErr != nil {
+		panic(tErr)
+	}
+	_, wErr := conn.Write(tohttpData)
+	if wErr != nil {
+		panic(wErr)
 	}
 }

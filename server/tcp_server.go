@@ -5,6 +5,7 @@ import (
 	"log"
 	"net"
 	"path"
+	"path/filepath"
 	"runtime"
 
 	"entry_task/Conf"
@@ -21,13 +22,11 @@ type TcpServer struct {
 }
 
 func init() {
-	_, filepath, _, _ := runtime.Caller(0)
-	p := path.Dir(filepath)
+	_, fp, _, _ := runtime.Caller(0)
+	p := path.Dir(fp)
 	p = path.Dir(p)
-
 	log.Println("log path", p)
-
-	Conf.LoadConf(p + "/Conf/config.json")
+	Conf.LoadConf(filepath.Join(p, "Conf/config.json"))
 	// log.Println("dafas", Conf.Config)
 }
 func main() {
@@ -63,7 +62,6 @@ func handleAll(conn net.Conn) {
 	defer conn.Close()
 	//this for loop is for one connection with multiple requests!!!
 	for {
-
 		size, cerr := conn.Read(buff)
 		if cerr != nil {
 			fmt.Println("buferr", cerr)
@@ -87,41 +85,52 @@ func handleAll(conn net.Conn) {
 		switch *toServerD.Ctype {
 		case "login":
 			tmpdata := &data.User{}
-			tmperr := proto.Unmarshal(toServerD.Httpdata, tmpdata)
-			if tmperr != nil {
-				fmt.Println("login err:", tmperr)
-				panic(tmperr)
+			tmpErr := proto.Unmarshal(toServerD.Httpdata, tmpdata)
+			if tmpErr != nil {
+				fmt.Println("login err:", tmpErr)
+				panic(tmpErr)
 			}
 			// tmpdata := data.Httpdata
 			service.LoginHandle(conn, *tmpdata)
 		//Home tcp
 		case "home":
 			tmpdata := &data.InfoWithUsername{}
-			tmperr := proto.Unmarshal(toServerD.Httpdata, tmpdata)
-			if tmperr != nil {
-				fmt.Println("login err:", tmperr)
-				panic(tmperr)
+			tmpErr := proto.Unmarshal(toServerD.Httpdata, tmpdata)
+			if tmpErr != nil {
+				fmt.Println("login err:", tmpErr)
+				panic(tmpErr)
 			}
 
 			log.Println("home tcp decode data", tmpdata)
 			service.HomeHandle(conn, tmpdata.GetUsername(), tmpdata.GetToken())
 
-		// case "uploadAvatar":
-		// 	tmpdata := data.HttpData.(*Util.InfoWithUsername)
-		// 	fmt.Println("tcp upload file decode data", tmpdata)
-		// 	uploadHandle(conn, tmpdata.Username, tmpdata.Info, tmpdata.Token)
+		case "uploadAvatar":
+			tmpdata := &data.InfoWithUsername{}
+			tmpErr := proto.Unmarshal(toServerD.Httpdata, tmpdata)
+			if tmpErr != nil {
+				panic(tmpErr)
+			}
 
-		// case "changeNickName":
-		// 	tmpdata := data.HttpData.(*Util.InfoWithUsername)
-		// 	fmt.Println("tcp change nickname decode data ", tmpdata)
-		// 	changeNickNameHandle(conn, tmpdata.Username, tmpdata.Info, tmpdata.Token)
+			fmt.Println("tcp upload file decode data", tmpdata)
+			service.UploadHandle(conn, tmpdata.GetUsername(), tmpdata.GetInfo(), tmpdata.GetToken())
+			// uploadHandle(conn, , tmpdata.Info, tmpdata.Token)
+
+		case "changeNickName":
+			tmpdata := &data.InfoWithUsername{}
+			tmpErr := proto.Unmarshal(toServerD.Httpdata, tmpdata)
+			if tmpErr != nil {
+				panic(tmpErr)
+			}
+			fmt.Println("tcp change nickname decode data ", tmpdata)
+			// changeNickNameHandle(conn, tmpdata.Username, tmpdata.Info, tmpdata.Token)
+			service.ChangeNickNameHandle(conn, tmpdata.GetUsername(), string(tmpdata.GetInfo()[:]), tmpdata.GetToken())
 
 		case "logout":
 			tmpdata := &data.InfoWithUsername{}
-			tmperr := proto.Unmarshal(toServerD.Httpdata, tmpdata)
-			if tmperr != nil {
-				fmt.Println("logout err:", tmperr)
-				panic(tmperr)
+			tmpErr := proto.Unmarshal(toServerD.Httpdata, tmpdata)
+			if tmpErr != nil {
+				fmt.Println("logout err:", tmpErr)
+				panic(tmpErr)
 			}
 			fmt.Println("tcp change logout decode data ", tmpdata)
 			// logoutHandle(conn, tmpdata.Username, tmpdata.Info)

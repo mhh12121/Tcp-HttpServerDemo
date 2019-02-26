@@ -36,9 +36,5 @@ func LogoutHandle(conn net.Conn, username string, token interface{}) {
 	if writeErr != nil {
 		fmt.Println("logout write conn err,", writeErr)
 	}
-	// encoder := gob.NewEncoder(conn)
-	// errreturn := encoder.Encode(returnValue)
-	// if errreturn != nil {
-	// 	log.Println("logout encode err", errreturn)
-	// }
+
 }

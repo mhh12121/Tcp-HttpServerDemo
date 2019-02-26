@@ -1,17 +1,19 @@
 package main
 
 import (
-	"crypto/rand"
 	"encoding/json"
+	"entry_task/Conf"
 	"fmt"
 	"html/template"
+	"io"
 	"log"
+	"math/rand"
 	"net"
 	"net/http"
+	"os"
 	"path"
+	"path/filepath"
 	"runtime"
-
-	"entry_task/Conf"
 
 	data "entry_task/Data"
 	"entry_task/Util"
@@ -62,9 +64,9 @@ func main() {
 	http.HandleFunc("/login", loginHandler)
 	// http.HandleFunc("/login/auth", authHandler)
 	http.HandleFunc("/Home", homeHandler)
-	// http.HandleFunc("/Home/upload", uploadHandler)
+	http.HandleFunc("/Home/upload", uploadHandler)
 	http.HandleFunc("/", testHandler)
-	// http.HandleFunc("/Home/change", changeNickNameHandler)
+	http.HandleFunc("/Home/change", changeNickNameHandler)
 	http.HandleFunc("/Home/logout", logoutHandler)
 	http.HandleFunc("/test", testHandler)
 	errhttp := http.ListenAndServe(Conf.Config.Connect.Httphost+":"+Conf.Config.Connect.Httpport, nil)
@@ -156,7 +158,6 @@ func logoutHandler(w http.ResponseWriter, r *http.Request) {
 		return
 		// }
 	}
-
 }
 
 //generate simple token
@@ -179,7 +180,6 @@ func readServer(w http.ResponseWriter, r *http.Request, tcpconn net.Conn, ctype 
 	case "login":
 		{
 			for {
-
 				size, cerr := tcpconn.Read(buff)
 				// .Read(buff)
 				if cerr != nil {
@@ -202,25 +202,14 @@ func readServer(w http.ResponseWriter, r *http.Request, tcpconn net.Conn, ctype 
 					panic(dataErr)
 				}
 
-				//decoder
-				// gob.Register(new(Util.ResponseFromServer))
-				// decoder := gob.NewDecoder(tcpconn)
-				// var tmp Util.ResponseFromServer
-				// decoder.Decode(&tmp)
-				// log.Println("login http server", tmp)
-				//tcp server response ok
-				//and login success
-				// if tmp.Success {
-				// 	fmt.Println("get!!!", tmp)
-				// 	return nil, true
-				// }
 				//something wrong in tcp server
 				//or login fail
 				fmt.Println("http read server:", dataResp)
 				if dataResp.GetSuccess() {
 					return nil, true
+				} else {
+					break
 				}
-				// return Util.ResFailStr, false
 
 			}
 			return nil, false
@@ -266,37 +255,68 @@ func readServer(w http.ResponseWriter, r *http.Request, tcpconn net.Conn, ctype 
 			}
 			return nil, false
 		}
-	// case "changeNickName":
-	// 	{
-	// 		decoder := gob.NewDecoder(tcpconn)
-	// 		var tmp Util.ResponseFromServer
-	// 		err := decoder.Decode(&tmp)
-	// 		log.Println("changenickname recveive:", tmp)
-	// 		if err != nil {
-	// 			log.Println("changenickname decode err", err)
-	// 		}
-	// 		// Util.FailFastCheckErr(err)
-	// 		if !tmp.Success {
-	// 			//token expires or not correct
-	// 			return nil, false
-	// 		}
+	case "changeNickName":
+		{
+			for {
+				// bufio.NewReader(tcpconn)
+				size, cerr := tcpconn.Read(buff)
+				// .Read(buff)
+				if cerr != nil {
+					fmt.Println("nickname buferr", cerr)
+					panic(cerr)
+				}
+				if size == 0 {
+					fmt.Println("nickname nothing in conn")
+					return nil, false
+				}
 
-	// 		return nil, true
-	// 	}
-	// case "uploadAvatar":
-	// 	{
-	// 		gob.Register(new(Util.ResponseFromServer))
-	// 		decoder := gob.NewDecoder(tcpconn)
-	// 		var tmp Util.ResponseFromServer
-	// 		err := decoder.Decode(&tmp)
-	// 		if err != nil {
-	// 			log.Println("uploadavatar decode err")
-	// 			panic(err)
-	// 		}
-	// 		// Util.FailFastCheckErr(err)
+				tmp := &data.ResponseFromServer{}
+				tmpErr := proto.Unmarshal(buff[:size], tmp)
+				if tmpErr != nil {
+					fmt.Println("http nickname unmarshal err", tmpErr)
+					panic(tmpErr)
+				}
 
-	// 		return nil, true
-	// 	}
+				if tmp.GetSuccess() {
+
+					// if tmp.GetTcpData() == nil {
+					// 	break
+					// }
+
+					return nil, true
+				} else { //token expires or not correct
+					break
+				}
+			}
+			return nil, false
+		}
+	case "uploadAvatar":
+		{
+			for {
+				size, cerr := tcpconn.Read(buff)
+				if cerr != nil {
+					panic(cerr)
+				}
+				if size == 0 {
+					return nil, false
+				}
+
+				tmp := &data.ResponseFromServer{}
+				tmpErr := proto.Unmarshal(buff[:size], tmp)
+				if tmpErr != nil {
+					fmt.Println("avatar unmarshal")
+					panic(tmpErr)
+				}
+				if tmp.GetSuccess() {
+					return nil, true
+				} else {
+					break
+				}
+
+			}
+
+			return nil, false
+		}
 	case "logout":
 		{
 			for {
@@ -318,20 +338,13 @@ func readServer(w http.ResponseWriter, r *http.Request, tcpconn net.Conn, ctype 
 					fmt.Println("http logout unmarshal err", tmpErr)
 					panic(tmpErr)
 				}
-				return tmp.GetTcpData(), tmp.GetSuccess()
+				if tmp.GetSuccess() {
+					return tmp.GetTcpData(), tmp.GetSuccess()
+				} else {
+					break
+				}
 
 			}
-			// gob.Register(new(Util.ResponseFromServer))
-
-			// decoder := gob.NewDecoder(tcpconn)
-			// var tmp Util.ResponseFromServer
-			// err := decoder.Decode(&tmp)
-			// if err != nil {
-			// 	log.Println("logout decode err")
-			// 	panic(err)
-			// }
-
-			// Util.FailFastCheckErr(err)
 
 			return nil, false
 		}
@@ -339,12 +352,6 @@ func readServer(w http.ResponseWriter, r *http.Request, tcpconn net.Conn, ctype 
 	return nil, false
 
 }
-
-// func writeServer(data byte, tcpconn net.Conn, ctype string, readchan chan<- int, stopchan chan<- bool) (interface{}, bool) {
-// 	// for {
-// 	// 	tcpconn
-// 	// }
-// }
 
 //for login Get render
 func loginHandler(w http.ResponseWriter, r *http.Request) {
@@ -360,17 +367,70 @@ func loginHandler(w http.ResponseWriter, r *http.Request) {
 			t.Execute(w, nil)
 			return
 		}
-		// if errtoken != nil {
-		// 	fmt.Println("no tokencookie", errtoken)
-		// 	t.Execute(w, nil)
-		// 	return
-		// }
-
+		//There exists one problem:
+		//1. Cookie exists but token in redis already expires
+		//solution:also needs to authorize again?
 		//if found username and token (no matter right or wrong)
 		//tmpcommand
-		http.Redirect(w, r, "/Home", http.StatusFound)
-		fmt.Println("login user cookie:", usernamecookie.Value)
-		fmt.Println("login token cookie:", tokencookie.Value)
+		tcpconn, errget := connpool.Get()
+		if errget != nil {
+			panic(errget)
+		}
+		// tcpconn.SetReadDeadline(time.Now().Add(5 * time.Second))
+		fmt.Println("tcp conn:", tcpconn.RemoteAddr().String())
+		defer tcpconn.Close()
+		tempuser := &data.User{Username: proto.String(usernamecookie.Value), Password: proto.String(""), Token: proto.String(tokencookie.Value)}
+		tempuserData, tmpErr := proto.Marshal(tempuser)
+		if tmpErr != nil {
+			fmt.Println("login marshal tempuser err:", tmpErr)
+			panic(tmpErr)
+		}
+		tmpdata := &data.ToServerData{Ctype: proto.String("login"), Httpdata: tempuserData}
+		tmpdataSend, _ := proto.Marshal(tmpdata)
+		//----rpc call login------------
+		// readchan := make(chan int)
+		_, err := tcpconn.Write(tmpdataSend)
+		if err != nil {
+			fmt.Println("login write err:", err)
+			panic(err)
+		}
+
+		//----------------------------
+		//------old--------------
+		// gob.Register(new(Util.User))
+		// gob.Register(new(Util.RealUser))
+		// gob.Register(new(Util.ToServerData))
+		// encoder := gob.NewEncoder(tcpconn)
+		// err := encoder.Encode(tmpdata)
+		// if err != nil {
+		// 	panic(err)
+		// }
+		//-------------------------
+
+		fmt.Println("encode usename pwd:", tmpdata)
+		// //loop to listen from server
+
+		// for {
+		// time.Sleep(2 * time.Second)
+		_, successlogin := readServer(w, r, tcpconn, "login") //tcpconn or rpc.Con
+		//success login
+
+		if successlogin {
+			fmt.Println("login success!!http")
+			//, MaxAge: Util.CookieExpires
+			log.Println("login cookie expr", Util.CookieExpires)
+
+			cookie := http.Cookie{Name: "username", Value: usernamecookie.Value, Path: "/", Expires: Util.CookieExpires}
+			http.SetCookie(w, &cookie)
+			cookie = http.Cookie{Name: "token", Value: tokencookie.Value, Path: "/", Expires: Util.CookieExpires}
+			http.SetCookie(w, &cookie)
+			http.Redirect(w, r, "/Home", http.StatusFound)
+
+			return
+		}
+		// http.Redirect(w, r, "/Home", http.StatusFound)
+		// fmt.Println("login user cookie:", usernamecookie.Value)
+		// fmt.Println("login token cookie:", tokencookie.Value)
 		t.Execute(w, nil)
 	}
 	//login authentication
@@ -500,15 +560,7 @@ func homeHandler(w http.ResponseWriter, r *http.Request) {
 		}
 		fmt.Println("http cookie ", cookieuser.Value)
 		tcpconn.Write(tmpData)
-		// fmt.Println("do sth ")
-		// gob.Register(new(Util.InfoWithUsername))
-		// gob.Register(new(Util.ToServerData))
-		// encoder := gob.NewEncoder(tcpconn)
-		// encoder.Encode(tmpdata)
 
-		//loop listen response from tcp server
-		// for {
-		// readchan := make(chan int)
 		log.Println("home render loop", tmpData)
 		datar, successHome := readServer(w, r, tcpconn, "home")
 		//token correct
@@ -542,138 +594,147 @@ func homeHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 //upload avatar handler
-// func uploadHandler(w http.ResponseWriter, r *http.Request) {
-// 	//simple one
-// 	// var errget error
-// 	if r.Method == http.MethodPost {
-// 		cookieuser, erruser := r.Cookie("username")
-// 		if erruser != nil {
-// 			log.Println("http upload file user err:", erruser)
-// 			http.Redirect(w, r, "/login", http.StatusFound)
-// 			return
-// 		}
-// 		cookietoken, errtoken := r.Cookie("token")
-// 		if errtoken != nil {
-// 			log.Println("http upload file token err:", errtoken)
-// 			http.Redirect(w, r, "/login", http.StatusFound)
-// 			return
-// 		}
+func uploadHandler(w http.ResponseWriter, r *http.Request) {
+	//simple one
+	// var errget error
+	if r.Method == http.MethodPost {
+		cookieuser, erruser := r.Cookie("username")
+		if erruser != nil {
+			log.Println("http upload file user err:", erruser)
+			http.Redirect(w, r, "/login", http.StatusFound)
+			return
+		}
+		cookietoken, errtoken := r.Cookie("token")
+		if errtoken != nil {
+			log.Println("http upload file token err:", errtoken)
+			http.Redirect(w, r, "/login", http.StatusFound)
+			return
+		}
 
-// 		tcpconn, errget := connpool.Get()
-// 		if errget != nil {
-// 			panic(errget)
-// 		}
-// 		defer tcpconn.Close()
-// 		// Util.FailFastCheckErr(errget)
-// 		// defer tcpconn.Close()
-// 		file, handler, err := r.FormFile("profile")
-// 		defer file.Close()
-// 		if err != nil {
-// 			fmt.Println("http upload get file err", err)
-// 			http.Redirect(w, r, "/Home", http.StatusFound)
-// 			return
-// 		}
-// 		//check if file format is correct
-// 		//todo
-// 		//some kinds of file may cause page crash
-// 		filename, isLegal := checkAndCreateFileName(handler.Filename)
-// 		if !isLegal {
-// 			log.Println("illegal file format")
-// 			// w.Write([]byte("wrong format!!!"))
-// 			// http.Redirect(" ")
-// 			http.Redirect(w, r, "/Home", http.StatusFound)
-// 			return
-// 		}
+		tcpconn, errget := connpool.Get()
+		if errget != nil {
+			panic(errget)
+		}
+		defer tcpconn.Close()
+		// Util.FailFastCheckErr(errget)
+		// defer tcpconn.Close()
+		file, handler, err := r.FormFile("profile")
+		defer file.Close()
+		if err != nil {
+			fmt.Println("http upload get file err", err)
+			http.Redirect(w, r, "/Home", http.StatusFound)
+			return
+		}
+		//check if file format is correct
+		//todo
+		//some kinds of file may cause page crash
+		filename, isLegal := checkAndCreateFileName(handler.Filename)
+		if !isLegal {
+			log.Println("illegal file format")
+			http.Redirect(w, r, "/Home", http.StatusFound)
+			return
+		}
 
-// 		// fmt.Fprintf(w, "%v", handler.Header)
-// 		f, err := os.OpenFile(Util.UploadPath+filename, os.O_WRONLY|os.O_CREATE, 0666)
-// 		if err != nil {
-// 			fmt.Println("http openfile fail", err)
-// 			return
-// 		}
-// 		defer f.Close()
-// 		io.Copy(f, file)
+		// fmt.Fprintf(w, "%v", handler.Header)
+		f, err := os.OpenFile(filepath.Join(Util.UploadPath, filename), os.O_WRONLY|os.O_CREATE, 0666)
+		if err != nil {
+			fmt.Println("http openfile fail", err)
+			return
+		}
+		defer f.Close()
+		io.Copy(f, file)
 
-// 		//get username from cookie
+		//get username from cookie
 
-// 		tempAvatar := &Util.InfoWithUsername{Username: cookieuser.Value, Info: filename, Token: cookietoken.Value}
-// 		uploadToServer := &Util.ToServerData{Ctype: "uploadAvatar", HttpData: tempAvatar}
-// 		gob.Register(new(Util.InfoWithUsername))
-// 		gob.Register(new(Util.ToServerData))
-// 		encoder := gob.NewEncoder(tcpconn)
-// 		uploaderr := encoder.Encode(uploadToServer)
-// 		if uploaderr != nil {
-// 			log.Println("upload encode err")
-// 			panic(uploaderr)
-// 		}
-// 		// Util.FailFastCheckErr(uploaderr)
-// 		//listen response from tcp server
-// 		// for {
-// 		readchan := make(chan int)
-// 		_, successupload := readServer(w, r, tcpconn, "uploadAvatar", readchan)
-// 		if successupload {
-// 			http.Redirect(w, r, "/Home", http.StatusFound)
-// 			return
-// 		}
-// 		//if db crash or token wrong
-// 		http.Redirect(w, r, "/Home", http.StatusFound)
-// 		// w.Write([]byte("upload file failed!"))
-// 		return
-// 		// }
-// 	}
+		tempAvatar := &data.InfoWithUsername{Username: proto.String(cookieuser.Value), Info: []byte(filename), Token: proto.String(cookietoken.Value)}
+		tempAvatarData, tErr := proto.Marshal(tempAvatar)
+		if tErr != nil {
+			panic(tErr)
+		}
+		uploadToServer := &data.ToServerData{Ctype: proto.String("uploadAvatar"), Httpdata: tempAvatarData}
+		uploadServerData, uErr := proto.Marshal(uploadToServer)
+		if uErr != nil {
+			panic(uErr)
+		}
+		_, wErr := tcpconn.Write(uploadServerData)
+		if wErr != nil {
+			panic(wErr)
+		}
+		//listen response from tcp server
+		// for {
+		// readchan := make(chan int)
+		_, successupload := readServer(w, r, tcpconn, "uploadAvatar")
+		if successupload {
+			http.Redirect(w, r, "/Home", http.StatusFound)
+			return
+		}
+		// w.WriteHeader(http.StatusUnauthorized)
+		//if db crash or token wrong
+		http.Redirect(w, r, "/Home", http.StatusFound)
+		return
+		// }
+	}
 
-// }
-// func changeNickNameHandler(w http.ResponseWriter, r *http.Request) {
-// 	if r.Method == http.MethodPost {
-// 		tcpconn, errget := connpool.Get()
-// 		if errget != nil {
-// 			panic(errget)
-// 		}
-// 		// Util.FailFastCheckErr(errget)
-// 		defer tcpconn.Close()
-// 		newnickname := r.FormValue("newnickname")
-// 		log.Println("homenickname", newnickname)
-// 		cookieuser, erruser := r.Cookie("username")
-// 		cookietoken, errtoken := r.Cookie("token")
-// 		if erruser != nil {
-// 			//cookie not exists or be destroyed
-// 			fmt.Println("change nickname get cookie fail", erruser)
-// 			http.Redirect(w, r, "/login", http.StatusFound)
-// 			return
-// 		}
-// 		if errtoken != nil {
-// 			fmt.Println("change nickname get cookie fail", erruser)
-// 			http.Redirect(w, r, "/login", http.StatusFound)
-// 			return
-// 		}
-// 		gob.Register(new(Util.InfoWithUsername))
-// 		gob.Register(new(Util.ToServerData))
+}
+func changeNickNameHandler(w http.ResponseWriter, r *http.Request) {
+	if r.Method == http.MethodPost {
+		tcpconn, errget := connpool.Get()
+		if errget != nil {
+			panic(errget)
+		}
+		// Util.FailFastCheckErr(errget)
+		defer tcpconn.Close()
+		newnickname := r.FormValue("newnickname")
+		log.Println("homenickname", newnickname)
+		cookieuser, erruser := r.Cookie("username")
+		cookietoken, errtoken := r.Cookie("token")
+		if erruser != nil {
+			//cookie not exists or be destroyed
+			fmt.Println("change nickname get cookie fail", erruser)
+			http.Redirect(w, r, "/login", http.StatusFound)
+			return
+		}
+		if errtoken != nil {
+			fmt.Println("change nickname get cookie fail", erruser)
+			http.Redirect(w, r, "/login", http.StatusFound)
+			return
+		}
 
-// 		tempMap := &Util.InfoWithUsername{Username: cookieuser.Value, Info: newnickname, Token: cookietoken.Value}
-// 		uploadToServer := &Util.ToServerData{Ctype: "changeNickName", HttpData: tempMap}
-// 		encoder := gob.NewEncoder(tcpconn)
-// 		err := encoder.Encode(uploadToServer)
-// 		if err != nil {
-// 			log.Println("change nickname encode err", err)
-// 		}
-// 		// Util.FailFastCheckErr(err)
-// 		readchan := make(chan int)
-// 		for {
-// 			_, success := readServer(w, r, tcpconn, "changeNickName", readchan)
-// 			if success {
-// 				http.Redirect(w, r, "/Home", http.StatusFound)
-// 				return
-// 			}
-// 		}
-// 	}
-// }
-// func checkAndCreateFileName(oldName string) (newName string, isLegal bool) {
-// 	ext := path.Ext(oldName)
-// 	// uppercase
-// 	//todo
-// 	if ext == ".jpg" || ext == ".jpeg" || ext == ".png" || ext == ".gif" {
-// 		newName = Util.GetFileName(oldName, ext)
-// 		isLegal = true
-// 	}
-// 	return newName, isLegal
-// }
+		tempMap := &data.InfoWithUsername{Username: proto.String(cookieuser.Value), Info: []byte(newnickname), Token: proto.String(cookietoken.Value)}
+		tempMapData, tmpErr := proto.Marshal(tempMap)
+		if tmpErr != nil {
+			panic(tmpErr)
+		}
+		uploadToServer := &data.ToServerData{Ctype: proto.String("changeNickName"), Httpdata: tempMapData}
+		uploadToServerData, uErr := proto.Marshal(uploadToServer)
+		if uErr != nil {
+			panic(uErr)
+		}
+		_, wErr := tcpconn.Write(uploadToServerData)
+		if wErr != nil {
+			fmt.Println("nickname write marshal")
+			panic(wErr)
+		}
+
+		_, success := readServer(w, r, tcpconn, "changeNickName")
+		if success {
+			http.Redirect(w, r, "/Home", http.StatusFound)
+			return
+		} else { //token expires or cookie expires
+			// w.WriteHeader(http.StatusUnauthorized)
+			fmt.Println("token wrong???")
+		}
+
+	}
+}
+
+func checkAndCreateFileName(oldName string) (newName string, isLegal bool) {
+	ext := path.Ext(oldName)
+	// uppercase
+	//todo
+	if ext == ".jpg" || ext == ".jpeg" || ext == ".png" || ext == ".gif" {
+		newName = Util.GetFileName(oldName, ext)
+		isLegal = true
+	}
+	return newName, isLegal
+}
