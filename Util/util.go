@@ -1,8 +1,11 @@
 package Util
 
 import (
+	"bytes"
 	"crypto/md5"
+	"encoding/binary"
 	"encoding/hex"
+
 	"strconv"
 	"time"
 )
@@ -21,59 +24,45 @@ import (
 const (
 	TimeoutDuration = 5 * time.Minute
 	UploadPath      = "../images/"
-	// ResSuccessStr   = "success"
-	// ResFailStr      = "fail"
-	// ResWrongStr     = "wrong password or account"
-
 )
 
 var TokenExpires = int64(1e11)
 var CookieExpires = time.Now().Add(1 * time.Hour)
 
-// var TokenExpires = time.Now().Add(1 * time.Minute)
+var ErrCode map[int]string = map[int]string{
+	4001: "mysql record not found",
+	4002: "redis record not found",
+	4003: "cookie record not found",
+	5001: "unmarshal error",
+	5002: "no connection tcp",
+	5003: "no connection http",
+	6001: "username error",
+	6002: "password error",
+}
 
-//uniform data to tcp server
-// type ToServerData struct {
-// 	Ctype    string
-// 	HttpData interface{}
-// 	// Errcode  int
-// }
+const (
+	LOGINCODE    = 2
+	LOGOUTCODE   = 4
+	HOMECODE     = 6
+	UPDATENICK   = 8
+	UPLOADAVATAR = 10
+	COMPRESS     = 1
+	NOCOMPRESS   = 0
+)
 
-// //Uniform data from tcp server
-// type ResponseFromServer struct {
-// 	Success bool
-// 	TcpData interface{}
-// 	// Errcode int
-// }
+func IntToBytes(n int) []byte {
+	res := int32(n)
+	bytesBuffer := bytes.NewBuffer([]byte{})
+	binary.Write(bytesBuffer, binary.BigEndian, res)
+	return bytesBuffer.Bytes()
+}
+func BytestoInt(b []byte) int {
+	bytesBuffer := bytes.NewBuffer(b)
+	var x int32
+	binary.Read(bytesBuffer, binary.BigEndian, &x)
+	return int(x)
 
-//success response from server
-
-//RealUser is the home page data
-// type RealUser struct {
-// 	Username string
-// 	Nickname string
-// 	Avatar   string
-// }
-
-// //User is login data
-// type User struct {
-// 	Username string
-// 	Password string
-// 	Token    string
-// }
-
-// //Info is for changing avatar data and nickname
-// type InfoWithUsername struct {
-// 	Username string
-// 	Info     interface{}
-// 	Token    string
-// }
-
-// func FailFastCheckErr(err error) {
-// 	if err != nil {
-// 		panic(err)
-// 	}
-// }
+}
 
 //rename the uploaded files
 func GetFileName(fileName string, ext string) string {

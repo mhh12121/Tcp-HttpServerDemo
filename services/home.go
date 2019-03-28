@@ -11,9 +11,16 @@ import (
 	"github.com/golang/protobuf/proto"
 )
 
-func HomeHandle(conn net.Conn, username string, token interface{}) {
+// func HomeHandle(conn net.Conn, username string, token interface{}) {
+func HomeHandle(conn net.Conn, toServerD *data.ToServerData) {
+	tmpdata := &data.InfoWithUsername{}
+	tmpErr := proto.Unmarshal(toServerD.Httpdata, tmpdata)
+	if tmpErr != nil {
+		fmt.Println("login err:", tmpErr)
+		panic(tmpErr)
+	}
 	//checktoken first
-	exists, errtoken := dao.CheckToken(username, token.(string))
+	exists, errtoken := dao.CheckToken(tmpdata.GetUsername(), tmpdata.GetToken())
 	// data.FailSafeCheckErr("home checktoken cache err", errtoken)
 	//1. cookie still exists but token expires
 	//---solution: clear cookie first then redirect to login
@@ -41,7 +48,7 @@ func HomeHandle(conn net.Conn, username string, token interface{}) {
 	}
 
 	//First go through the Redis get cache
-	user, ok, err := dao.GetCacheInfo(username)
+	user, ok, err := dao.GetCacheInfo(tmpdata.GetUsername())
 	if err != nil {
 		log.Println("redis get cache fail err", err)
 	}
@@ -70,11 +77,11 @@ func HomeHandle(conn net.Conn, username string, token interface{}) {
 	}
 
 	//cache expires or not exists then go to mysql
-	userdb, okdb := dao.AllInfo(username)
+	userdb, okdb := dao.AllInfo(tmpdata.GetUsername())
 	//retrieve from mysql success
 	if okdb {
 		//it will also save it to cache
-		successCache := dao.SaveCacheInfo(username, *userdb.Nickname, *userdb.Avatar)
+		successCache := dao.SaveCacheInfo(tmpdata.GetUsername(), *userdb.Nickname, *userdb.Avatar)
 		if !successCache {
 			fmt.Println("update redis homne cache fail")
 			//do nothing

@@ -15,9 +15,15 @@ import (
 // type LogoutService struct {
 // }
 
-func LogoutHandle(conn net.Conn, username string, token interface{}) {
+func LogoutHandle(conn net.Conn, toServerD *data.ToServerData) {
+	tmpdata := &data.InfoWithUsername{}
+	tmpErr := proto.Unmarshal(toServerD.Httpdata, tmpdata)
+	if tmpErr != nil {
+		fmt.Println("logout err:", tmpErr)
+		panic(tmpErr)
+	}
 	//invalid the cache in redis first
-	err := dao.InvalidCache(username, token.(string))
+	err := dao.InvalidCache(tmpdata.GetUsername(), tmpdata.GetToken())
 	if err != nil {
 		log.Println("invalid logout err", err)
 	}

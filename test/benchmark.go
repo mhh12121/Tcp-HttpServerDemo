@@ -74,12 +74,14 @@ func benchmarkLoginReq(serverAddr string, c int, isRan bool) (elapsed time.Durat
 		// req.AddCookie(&http.Cookie{Name: "token", Value: "test", Expires: time.Now().Add(120 * time.Second), Path: "/"})
 
 		req.Header.Set("Content-Type", "application/x-www-form-urlencoded") // This makes it workparam=value
+		req.Header.Set("cache-control", "no-cache")
 		req.Close = false
 		if err != nil {
 			log.Println(err)
 		}
 		//no value so will block till the end close
 		// <-readyGo
+		// time.Sleep(500 * time.Millisecond)
 		resp, err := client.Do(req)
 		if err != nil {
 			log.Println("simulate send request err", req, "response", resp, "error", err)
@@ -200,7 +202,7 @@ func main() {
 	// benchmarkLoginReq()
 	//over 100 crash
 	// num := 500, int32(num)
-	concurrency := 1000
+	concurrency := 200
 
 	elapsed := benchmarkLoginReq("http://localhost:8099/login", concurrency, true)
 	fmt.Printf("\t- Concurrency(%v) - Cost(%s) - QPS(%v/sec)\n",

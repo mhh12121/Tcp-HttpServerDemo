@@ -12,8 +12,18 @@ import (
 	"github.com/golang/protobuf/proto"
 )
 
-//tcp handle
-func LoginHandle(conn net.Conn, ruser data.User) {
+
+
+// func LoginHandle(conn net.Conn, ruser data.User) {
+func LoginHandle(conn net.Conn, toServerD *data.ToServerData) {
+	fmt.Println("login coming!")
+	tmpdata := &data.User{}
+	tmpErr := proto.Unmarshal(toServerD.Httpdata, tmpdata)
+	if tmpErr != nil {
+		fmt.Println("login err:", tmpErr)
+		panic(tmpErr)
+	}
+
 	// log.Println("login tcp decode data", tmpdata)
 	//get remote Addr
 	remoteAddr := conn.RemoteAddr().String()
@@ -21,7 +31,7 @@ func LoginHandle(conn net.Conn, ruser data.User) {
 	//first go through redis cache
 	//check if exists or different
 	//what if login in another device?
-	exists, errtoken := dao.CheckToken(*ruser.Username, *ruser.Token)
+	exists, errtoken := dao.CheckToken(*tmpdata.Username, *tmpdata.Token)
 	if errtoken != nil {
 		log.Println("login checktoken cache err", errtoken)
 	}
@@ -60,7 +70,7 @@ func LoginHandle(conn net.Conn, ruser data.User) {
 	}
 
 	//check from mysql
-	success, errorcheck := dao.Check(*ruser.Username, *ruser.Password)
+	success, errorcheck := dao.Check(*tmpdata.Username, *tmpdata.Password)
 
 	//login fail
 	if !success || errorcheck != nil {
@@ -75,18 +85,12 @@ func LoginHandle(conn net.Conn, ruser data.User) {
 		if writeErr != nil {
 			panic(writeErr)
 		}
-		//-------------old ---------------------
-		// encoder := gob.NewEncoder(conn)
-		// errreturn := encoder.Encode(returnValue)
-		// if errreturn != nil {
-		// 	log.Println("login mysql encode err", errreturn)
-		// }
-		// -------------------------------------
+
 		return
 	}
 
 	//if mysql check success, it will save it to redis as cache or update cache
-	tokenerr := dao.SetToken(*ruser.Username, *ruser.Token, Util.TokenExpires)
+	tokenerr := dao.SetToken(*tmpdata.Username, *tmpdata.Token, Util.TokenExpires)
 	if tokenerr != nil {
 		log.Println("login save cache err", tokenerr)
 	}
