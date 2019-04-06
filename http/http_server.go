@@ -23,6 +23,7 @@ import (
 )
 
 var connpool pool.Pool
+var globalcon net.Conn
 
 func init() {
 
@@ -57,12 +58,15 @@ func main() {
 	if err != nil {
 		panic(err)
 	}
-	// now you can get a connection from the pool, if there is no connection
-	// available it will create a new one via the factory function.
 
+	// con, err := net.("tcp", nil, tcpAddr)
+	// if err != nil {
+	// 	panic(err)
+	// }
+	// globalcon = con
 	// http.HandleFunc("/", viewHandler)
-	loginTemplate = template.Must(template.ParseFiles("../view/login.html"))
-	homeTemplate = template.Must(template.ParseFiles("../view/Home.html"))
+	// loginTemplate = template.Must(template.ParseFiles("../view/login.html"))
+	// homeTemplate = template.Must(template.ParseFiles("../view/Home.html"))
 
 	http.Handle("/images/", http.StripPrefix("/images/", http.FileServer(http.Dir(Util.UploadPath))))
 	http.HandleFunc("/login", loginHandler)
@@ -107,6 +111,8 @@ func readServer(w http.ResponseWriter, r *http.Request, tcpconn net.Conn, ctype 
 
 			// for {
 			size, httperr := tcpconn.Read(dataServer)
+			// size, httperr := globalcon.Read(dataServer)
+
 			if httperr != nil {
 				panic(httperr)
 			}
@@ -141,14 +147,8 @@ func readServer(w http.ResponseWriter, r *http.Request, tcpconn net.Conn, ctype 
 		}
 	case Util.HOMECODE:
 		{
-
-			// dataServer, rErr := ioutil.ReadAll(tcpconn)
-			// if rErr != nil {
-			// 	fmt.Fprintf(os.Stderr, "Fatal error: %s", rErr.Error())
-			// 	os.Exit(1)
-
-			// }
 			_, httperr := tcpconn.Read(dataServer)
+			// _, httperr := globalcon.Read(dataServer)
 			if httperr != nil {
 				panic(httperr)
 			}
@@ -182,10 +182,11 @@ func readServer(w http.ResponseWriter, r *http.Request, tcpconn net.Conn, ctype 
 		}
 	case Util.LOGOUTCODE:
 		{
-
-			// bufio.NewReader(tcpconn)
+			log.Println("--------------logout read from tcp-------------------")
 			_, cerr := tcpconn.Read(dataServer)
+			// _, cerr := globalcon.Read(dataServer)
 			// .Read(buff)
+			log.Println("--------------logout read data-------------------")
 			if cerr != nil {
 				fmt.Println("logout buferr", cerr)
 				panic(cerr)
@@ -273,15 +274,15 @@ func readServer(w http.ResponseWriter, r *http.Request, tcpconn net.Conn, ctype 
 func logoutHandler(w http.ResponseWriter, r *http.Request) {
 	if r.Method == http.MethodPost {
 		//todo
-		//Actually not use it
-		tmpc := r.Context()
-		fmt.Println("log out ", tmpc)
-		//
+		log.SetFlags(log.LstdFlags | log.Lshortfile)
+		fmt.Println("----------------logout-------------------")
 		tcpconn, errget := connpool.Get()
+		defer tcpconn.Close()
 		if errget != nil {
 			panic(errget)
 		}
-		defer tcpconn.Close()
+		log.Println("logout pool length---------------", connpool.Len())
+		// defer tcpconn.Close()
 		user, erruser := r.Cookie("username")
 		if erruser != nil {
 			log.Println("logout no user cookie")
@@ -291,7 +292,7 @@ func logoutHandler(w http.ResponseWriter, r *http.Request) {
 		if errtoken != nil {
 			log.Println("logout no token cookie")
 		}
-		httpWrap := &data.InfoWithUsername{Username: proto.String(user.Value), Token: proto.String(token.Value)}
+		httpWrap := &data.InfoWithUsername{Username: proto.String(user.Value), Info: []byte(""), Token: proto.String(token.Value)}
 		httpData, hErr := proto.Marshal(httpWrap)
 		if hErr != nil {
 			fmt.Println("logout marshal", hErr)
@@ -304,6 +305,7 @@ func logoutHandler(w http.ResponseWriter, r *http.Request) {
 			panic(tErr)
 		}
 		wrappedSend := Util.Pack(Util.PACK_CLIENT, tmpdata, false)
+		// _, writeErr := globalcon.Write(wrappedSend)
 		_, writeErr := tcpconn.Write(wrappedSend)
 		if writeErr != nil {
 			panic(writeErr)
@@ -312,6 +314,8 @@ func logoutHandler(w http.ResponseWriter, r *http.Request) {
 		//go to tcp to invalid the cache
 
 		_, successlogout := readServer(w, r, tcpconn, Util.LOGOUTCODE)
+		// _, successlogout := readServer(w, r, globalcon, Util.LOGOUTCODE)
+		log.Println("-----------logout successlogout ", successlogout)
 		if successlogout { //to clear all cookie
 			//temp struct
 			logoutReturn := struct {
@@ -372,6 +376,8 @@ func loginHandler(w http.ResponseWriter, r *http.Request) {
 		// if errget != nil {
 		// 	panic(errget)
 		// }
+		// fmt.Println("http login get tcpconn", tcpconn)
+		// defer tcpconn.Close()
 		// // tcpconn.SetReadDeadline(time.Now().Add(5 * time.Second))
 		// fmt.Println("tcp conn:", tcpconn.RemoteAddr().String())
 		// defer tcpconn.Close()
@@ -413,17 +419,20 @@ func loginHandler(w http.ResponseWriter, r *http.Request) {
 		// }
 
 		t.Execute(w, nil)
+		return
 	}
 	//login authentication
 	if r.Method == http.MethodPost {
 
 		tcpconn, errget := connpool.Get()
+		defer tcpconn.Close()
 		if errget != nil {
 			panic(errget)
 		}
+
 		// tcpconn.SetReadDeadline(time.Now().Add(5 * time.Second))
-		fmt.Println("tcp conn:", tcpconn.RemoteAddr().String())
-		defer tcpconn.Close()
+		// fmt.Println("tcp conn and http conn", tcpconn.RemoteAddr().String(), tcpconn.LocalAddr().String())
+		// fmt.Println("tcp conn and http conn", globalcon.RemoteAddr().String(), globalcon.LocalAddr().String())
 
 		fmt.Println("enter!!!!!!")
 		username := r.FormValue("username")
@@ -445,20 +454,11 @@ func loginHandler(w http.ResponseWriter, r *http.Request) {
 		}
 		tmpdata := &data.ToServerData{Ctype: proto.Int32(Util.LOGINCODE), Httpdata: tempuserData}
 		tmpdataSend, _ := proto.Marshal(tmpdata)
-		//----rpc call login------------
-		// readchan := make(chan int)
-		//----------------wrap handle code-------------
-		// wrappedSend := Util.IntToBytes(LOGINCODE)
-		// wrappedSend := make([]byte, len(tmpdataSend))
-		// binary.BigEndian.PutUint32(wrappedSend, LOGINCODE)
-		//----------------wrap compress code-------------
-		// compressMark := make([]byte, 1)
-		// binary.BigEndian.PutUint16(compressMark, NOCOMPRESS)
-		//----------------wrap all data-------------------
 		wrappedSend := Util.Pack(Util.PACK_CLIENT, tmpdataSend, false)
 		// fmt.Println("encode wrappedsend pwd:", wrappedSend)
 		fmt.Println("encode wrappedsend length", len(wrappedSend))
 		_, err := tcpconn.Write(wrappedSend)
+		// _, err := globalcon.Write(wrappedSend)
 		if err != nil {
 			fmt.Println("login write err:", err)
 			panic(err)
@@ -469,9 +469,10 @@ func loginHandler(w http.ResponseWriter, r *http.Request) {
 
 		// for {
 		// time.Sleep(2 * time.Second)
-		_, successlogin := readServer(w, r, tcpconn, Util.LOGINCODE) //tcpconn or rpc.Con
+		_, successlogin := readServer(w, r, tcpconn, Util.LOGINCODE)
+		// _, successlogin := readServer(w, r, globalcon, Util.LOGINCODE)
 		//success login
-
+		// tcpconn.Close()
 		if successlogin {
 			fmt.Println("login success!!http")
 			//, MaxAge: Util.CookieExpires
@@ -519,12 +520,10 @@ func homeHandler(w http.ResponseWriter, r *http.Request) {
 		}
 
 		tcpconn, errget := connpool.Get()
+		defer tcpconn.Close()
 		if errget != nil {
 			panic(errget)
 		}
-		// tcpconn.SetReadDeadline(time.Now().Add(5 * time.Second))
-		defer tcpconn.Close()
-		// Util.FailFastCheckErr(errget)
 		log.Println("home rendering")
 
 		//send to tcp server
@@ -547,11 +546,14 @@ func homeHandler(w http.ResponseWriter, r *http.Request) {
 		// binary.BigEndian.PutUint16(compressMark, NOCOMPRESS)
 		wrappedSend := Util.Pack(Util.PACK_CLIENT, tmpData, false)
 		_, werr := tcpconn.Write(wrappedSend)
+		// _, werr := globalcon.Write(wrappedSend)
 		if werr != nil {
 			panic(werr)
 		}
 		log.Println("home render loop", tmpData)
 		datar, successHome := readServer(w, r, tcpconn, Util.HOMECODE)
+		// datar, successHome := readServer(w, r, globalcon, Util.HOMECODE)
+
 		//token correct
 		if successHome {
 			ruser := datar.(*data.RealUser)

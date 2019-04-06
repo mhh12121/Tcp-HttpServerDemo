@@ -75,7 +75,7 @@ func HomeHandle(conn net.Conn, toServerD *data.ToServerData) {
 		}
 		return
 	}
-
+	log.Println("-----------not at redis,go to mysql---------------------")
 	//cache expires or not exists then go to mysql
 	userdb, okdb := dao.AllInfo(tmpdata.GetUsername())
 	//retrieve from mysql success

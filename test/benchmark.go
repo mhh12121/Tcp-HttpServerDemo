@@ -54,19 +54,12 @@ func benchmarkLoginReq(serverAddr string, c int, isRan bool) (elapsed time.Durat
 
 		var buffer bytes.Buffer
 		buffer.WriteString("mhh")
-		// rand
-		// if isRan {
-		// 	buffer.WriteString(strconv.Itoa(rand.Intn(1000000)))
-		// } else {
-		// 	buffer.WriteString("1")
-		// }
 		buffer.WriteString(strconv.Itoa(no))
-		log.Println("write string", no)
+		// log.Println("write string", no)
 		username := buffer.String()
-
 		data.Set("username", username)
 		data.Set("password", "a123456")
-		log.Println("account", data.Encode())
+		// log.Println("account", data.Encode())
 		// data.Set("nickname", "newbot")
 		// req, err := http.NewRequest("GET", serverAddr, bytes.NewBufferString(data.Encode()))
 		req, err := http.NewRequest("POST", serverAddr, bytes.NewBufferString(data.Encode()))
@@ -90,25 +83,19 @@ func benchmarkLoginReq(serverAddr string, c int, isRan bool) (elapsed time.Durat
 		if err1 != nil {
 			log.Println("ioutil req err:", req, err1)
 		}
-
-		// time.Sleep(1 * time.Second)
+		fmt.Println("closed")
 		resp.Body.Close()
 		wg.Done()
-
 	}
-
-	// }
 
 	for i := 0; i < c; i++ {
 		wg.Add(1)
 		// log.Println("loop i", i)
 		go cliRoutine(i + 1)
 	}
-	//
 	// close(readyGo)
 	start := time.Now()
 	wg.Wait()
-	// log.Println(time.Since(start))
 	return time.Since(start)
 }
 
@@ -202,7 +189,7 @@ func main() {
 	// benchmarkLoginReq()
 	//over 100 crash
 	// num := 500, int32(num)
-	concurrency := 200
+	concurrency := 100
 
 	elapsed := benchmarkLoginReq("http://localhost:8099/login", concurrency, true)
 	fmt.Printf("\t- Concurrency(%v) - Cost(%s) - QPS(%v/sec)\n",

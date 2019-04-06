@@ -72,7 +72,7 @@ func Check(username, password string) (bool, error) {
 //A user's info
 func AllInfo(username string) (*data.RealUser, bool) {
 
-	fmt.Println("dao home get info")
+	fmt.Println("------------------dao home get info--------------------------------")
 	c, err := db.Prepare("select nickname,avatar from user where username = ? ")
 	if err != nil {
 		log.Println("mysql db get allinfo err", err)

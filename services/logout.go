@@ -16,6 +16,7 @@ import (
 // }
 
 func LogoutHandle(conn net.Conn, toServerD *data.ToServerData) {
+	log.Println("----------tcp logout---------------------")
 	tmpdata := &data.InfoWithUsername{}
 	tmpErr := proto.Unmarshal(toServerD.Httpdata, tmpdata)
 	if tmpErr != nil {
@@ -38,7 +39,9 @@ func LogoutHandle(conn net.Conn, toServerD *data.ToServerData) {
 		fmt.Println("logout marshal err:", rErr)
 		panic(rErr)
 	}
+	log.Println("------------tcp logouthandle returnValueData-------", returnValue)
 	_, writeErr := conn.Write(returnValueData)
+	log.Println("----------tcp logout write socket---------------------")
 	if writeErr != nil {
 		fmt.Println("logout write conn err,", writeErr)
 	}

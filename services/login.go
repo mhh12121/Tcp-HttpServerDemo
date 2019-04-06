@@ -111,6 +111,6 @@ func LoginHandle(conn net.Conn, toServerD *data.ToServerData) {
 		fmt.Println("login writeErr", writeErr)
 		panic(writeErr)
 	}
-
+	
 	return
 }

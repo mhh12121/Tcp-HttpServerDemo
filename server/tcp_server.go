@@ -3,6 +3,7 @@ package main
 import (
 	"bufio"
 	"fmt"
+	"io"
 	"log"
 	"net"
 	"path"
@@ -35,7 +36,13 @@ type TCPServer struct {
 }
 
 func (tserver *TCPServer) Run() {
-	ln, err := net.Listen(tserver.Proto, ":"+tserver.Addr)
+	addr := Conf.Config.Connect.Tcphost + ":" + Conf.Config.Connect.Tcpport
+	tcpAddr, addErr := net.ResolveTCPAddr("tcp4", addr)
+	if addErr != nil {
+		panic(addErr)
+	}
+	ln, err := net.ListenTCP("tcp", tcpAddr)
+	// ln, err := net.Listen(tserver.Proto, ":"+tserver.Addr)
 
 	if err != nil {
 		fmt.Println("tcp listen failed:", err)
@@ -85,11 +92,18 @@ header(8bytes)        +length(4 bytes)=Data1's length   +  IF COMPRESSED(1 byte)
 -----------------------+---------------------------------+------------------------+------------+-------------------
 */
 func reader(conn net.Conn, readerChannel chan []byte) {
-	// for {
-	// defer conn.Close()
+
+	log.Println("readerchannel begin length-----------------------", len(readerChannel))
+	// realData,ok := <-readerChannel
+	// if ok{
+	// 	log.Println("------------already pass value---------------------------------")
+	// }
+	// log.Println("readerchannel now----------", readerChannel)
 	select {
 	case realData := <-readerChannel:
 		{
+			log.Println("readerchannel length after retrieve-----------------------", len(readerChannel))
+			log.Println("----------tcp channel reader block here------------")
 			toServerD := &data.ToServerData{}
 			dataErr := proto.Unmarshal(realData, toServerD)
 			fmt.Println("readchannel", toServerD)
@@ -99,29 +113,54 @@ func reader(conn net.Conn, readerChannel chan []byte) {
 				fmt.Println("proto", dataErr)
 				panic(dataErr)
 			}
+			if toServerD.GetCtype() == Util.LOGOUTCODE {
+				fmt.Println("----------logout tcp get reader------------")
+			}
 			// FunctionCode[realSize](con, toServerD)
 			FunctionCode[toServerD.GetCtype()](conn, toServerD)
 
 		}
-
+		// case <-time.After(time.Second * 10):
+		// 	fmt.Println("10 seconds after reader channel")
 	}
-	// }
+
 }
 func (tserver *TCPServer) handleAll(conn net.Conn) {
 	fmt.Println("handleall coming")
 	tmpBuffer := make([]byte, 0) //save splitted data(not included RealData but header,zipField)
-	readerChannel := make(chan []byte, 16)
-	go reader(conn, readerChannel)
-
+	//readerChannel := make(chan []byte, 1024) //realdata
+	// go reader(conn, readerChannel)
+	// defer close(readerChannel)
 	buffer := make([]byte, 1024)
 	for { //continue read buffer from socket
 		size, err := conn.Read(buffer) //all data at once,but maybe the data is not complete
 		if err != nil {
+			if err == io.EOF {
+				break
+			}
 			fmt.Println("error why handleall", err)
 			return
 		}
-		tmpBuffer = Util.Unpack(append(tmpBuffer, buffer[:size]...), readerChannel)
+		tmpBuffer = Util.Unpack(append(tmpBuffer, buffer[:size]...)) //, readerChannel
+		// log.Println("readerchannel length after retrieve-----------------------", len(readerChannel))
+		log.Println("----------tcp channel reader block here------------")
+		toServerD := &data.ToServerData{}
+		dataErr := proto.Unmarshal(tmpBuffer, toServerD)
+		fmt.Println("readchannel", toServerD)
+		// dataErr := proto.Unmarshal(buff[:int(size)], toServerD)
+		// dataErr := proto.Unmarshal(readData, toServerD)
+		if dataErr != nil {
+			fmt.Println("proto", dataErr)
+			panic(dataErr)
+		}
+		if toServerD.GetCtype() == Util.LOGOUTCODE {
+			fmt.Println("----------logout tcp get reader------------")
+		}
+		// FunctionCode[realSize](con, toServerD)
+		FunctionCode[toServerD.GetCtype()](conn, toServerD)
+
 	}
+	fmt.Println("handleall ___ end0--------------")
 
 	// Msglength := make([]byte, 4)
 
@@ -318,12 +357,7 @@ func main() {
 // 			service.ChangeNickNameHandle(conn, tmpdata.GetUsername(), string(tmpdata.GetInfo()[:]), tmpdata.GetToken())
 
 // 		case "logout":
-// 			tmpdata := &data.InfoWithUsername{}
-// 			tmpErr := proto.Unmarshal(toServerD.Httpdata, tmpdata)
-// 			if tmpErr != nil {
-// 				fmt.Println("logout err:", tmpErr)
-// 				panic(tmpErr)
-// 			}
+//
 // 			fmt.Println("tcp change logout decode data ", tmpdata)
 // 			service.LogoutHandle(conn, tmpdata.GetUsername(), tmpdata.GetToken())
 // 		}

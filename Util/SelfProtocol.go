@@ -3,6 +3,7 @@ package Util
 import (
 	"bytes"
 	"fmt"
+	"log"
 	"strings"
 )
 
@@ -39,13 +40,14 @@ Use length description:
 header(8bytes)         +length(4 bytes)=Data1's length   +  IF COMPRESSED(1 byte) +   Data1  +   length(2)//todo
 -----------------------+---------------------------------+------------------------+------------+-------------------
 */
-func Unpack(buffer []byte, readerChannel chan []byte) []byte {
+func Unpack(buffer []byte) []byte { //, readerChannel chan []byte
 	length := len(buffer)
 	fmt.Println("tcp buffer length", length)
 	var i int
 	for i = 0; i < length; i++ {
-		fmt.Println("unpack")
+		fmt.Println("------------------unpack begin-----------------------------")
 		if length < i+PackHeaderLength+PackDataLength+PackZipLength {
+			// <-readerChannel
 			fmt.Println("unpack length not complete")
 			break
 		}
@@ -66,13 +68,22 @@ func Unpack(buffer []byte, readerChannel chan []byte) []byte {
 			} else {
 				fmt.Println("nocompresss")
 				data := buffer[i+PackHeaderLength+PackDataLength+PackZipLength : i+PackHeaderLength+PackDataLength+PackZipLength+datalength]
-				readerChannel <- data
-				i += PackHeaderLength + PackDataLength + PackZipLength + datalength - 1
+				log.Println("data------------------>", data)
+				// log.Println("readerchannel before data------------------>", len(readerChannel))
+				return data
+				// readerChannel <- data
+
+				// log.Println("readerchannel after data------------------>", len(readerChannel))
+				// log.Println("data in channel------------------>", data)
+				// break
+				// i += PackHeaderLength + PackDataLength + PackZipLength + datalength - 1
 			}
 
-		} else if strings.Compare(string(buffer[i:i+PackHeaderLength]), PACK_HEARTBEAT) == 0 {
+		} else if strings.Compare(x, PACK_HEARTBEAT) == 0 {
 			//todo
 			fmt.Println("msg from heartbeat ")
+		} else {
+			fmt.Println("w's the hell wrong with it")
 		}
 
 	}

@@ -47,6 +47,7 @@
             data:{msg:"logout"},
             dataType:"json",
             success:function(rdata){
+                console.log(rdata);
                 if (rdata.Ok==true){
                     $(location).attr('href','http://localhost:8099/login');
                 }else{
