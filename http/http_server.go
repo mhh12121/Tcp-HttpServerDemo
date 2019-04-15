@@ -1,7 +1,7 @@
 package main
 
 import (
-	"bytes"
+	"bufio"
 	"encoding/json"
 	"entry_task/Conf"
 	"fmt"
@@ -96,27 +96,54 @@ func GenerateToken(len int) string {
 	return fmt.Sprintf("%x", b)
 }
 
+//some bugs here???//todo
+func ReadByteLoop(conn net.Conn) []byte {
+	connbuf := bufio.NewReader(conn)
+	b, _ := connbuf.ReadByte()
+	var msgData []byte
+	if connbuf.Buffered() > 0 {
+
+		msgData = append(msgData, b)
+		for connbuf.Buffered() > 0 {
+			b, err := connbuf.ReadByte()
+			if err != nil {
+				fmt.Print("unreadable readbyte or null ", err)
+				break
+
+			}
+			msgData = append(msgData, b)
+		}
+
+	}
+	return msgData
+}
+
 //get response from server
 func readServer(w http.ResponseWriter, r *http.Request, tcpconn net.Conn, ctype int32) (interface{}, bool) {
-	dataServer := make([]byte, 1024)
+	buffer := make([]byte, 1024)
+	dataServer := make([]byte, 0)
 	// rw := bufio.NewReadWriter(bufio.NewReader(tcpconn), bufio.NewWriter(tcpconn))
 	// c := bufio.NewReader(tcpconn)
 	// defer tcpconn.Close()
 	// <-readchan
+	// var wg sync.WaitGroup
 	fmt.Println("pass readserver")
-
+	// wg.Add(1)
 	switch ctype {
 	case Util.LOGINCODE:
 		{
-
+			size, httperr := tcpconn.Read(buffer)
+			fmt.Println("http util login read size---------------:", size)
+			// dataServer := ReadByteLoop(tcpconn)
+			dataServer = Util.Unpack(append(dataServer, buffer[:size]...))
 			// for {
-			size, httperr := tcpconn.Read(dataServer)
-			// size, httperr := globalcon.Read(dataServer)
+
+			// // size, httperr := globalcon.Read(dataServer)
 
 			if httperr != nil {
 				panic(httperr)
 			}
-			fmt.Println("http get from server length", size)
+			// fmt.Println("http get from server length", size)
 			// dataServer, rErr := ioutil.ReadAll(tcpconn) //can it really read to the end???//#todo
 			// fmt.Println("dataserver", dataServer)
 			// if rErr != nil {
@@ -124,7 +151,7 @@ func readServer(w http.ResponseWriter, r *http.Request, tcpconn net.Conn, ctype 
 			// 	os.Exit(1)
 
 			// }
-			dataServer = bytes.Trim(dataServer, "\x00")
+			// dataServer = bytes.Trim(dataServer, "\x00")
 			dataResp := &data.ResponseFromServer{}
 			dataErr := proto.Unmarshal(dataServer, dataResp) //illeagl tag 0
 			if dataErr != nil {
@@ -147,13 +174,17 @@ func readServer(w http.ResponseWriter, r *http.Request, tcpconn net.Conn, ctype 
 		}
 	case Util.HOMECODE:
 		{
-			_, httperr := tcpconn.Read(dataServer)
-			// _, httperr := globalcon.Read(dataServer)
+			size, httperr := tcpconn.Read(buffer)
+			// dataServer := ReadByteLoop(tcpconn)
+			dataServer = Util.Unpack(append(dataServer, buffer[:size]...))
+			// _, httperr := tcpconn.Read(dataServer)
+			// // _, httperr := globalcon.Read(dataServer)
 			if httperr != nil {
 				panic(httperr)
 			}
-			// fmt.Println("http get from server length", size)
-			dataServer = bytes.Trim(dataServer, "\x00")
+			// // fmt.Println("http get from server length", size)
+			// dataServer = bytes.Trim(dataServer, "\x00")
+			// dataServer := ReadByteLoop(tcpconn)
 			tmp := &data.ResponseFromServer{}
 			tmpErr := proto.Unmarshal(dataServer, tmp)
 			if tmpErr != nil {
@@ -183,15 +214,16 @@ func readServer(w http.ResponseWriter, r *http.Request, tcpconn net.Conn, ctype 
 	case Util.LOGOUTCODE:
 		{
 			log.Println("--------------logout read from tcp-------------------")
-			_, cerr := tcpconn.Read(dataServer)
-			// _, cerr := globalcon.Read(dataServer)
-			// .Read(buff)
-			log.Println("--------------logout read data-------------------")
-			if cerr != nil {
-				fmt.Println("logout buferr", cerr)
-				panic(cerr)
-			}
-			dataServer = bytes.Trim(dataServer, "\x00")
+			// _, cerr := tcpconn.Read(dataServer)
+			// // _, cerr := globalcon.Read(dataServer)
+			// // .Read(buff)
+			// log.Println("--------------logout read data-------------------")
+			// if cerr != nil {
+			// 	fmt.Println("logout buferr", cerr)
+			// 	panic(cerr)
+			// }
+			// dataServer = bytes.Trim(dataServer, "\x00")
+			dataServer := ReadByteLoop(tcpconn)
 			tmp := &data.ResponseFromServer{}
 			tmpErr := proto.Unmarshal(dataServer, tmp)
 			if tmpErr != nil {
@@ -478,12 +510,13 @@ func loginHandler(w http.ResponseWriter, r *http.Request) {
 			//, MaxAge: Util.CookieExpires
 			log.Println("login cookie expr", Util.CookieExpires)
 
+			//------------------------comment for test------------------------------
 			cookie := http.Cookie{Name: "username", Value: username, Path: "/", Expires: Util.CookieExpires}
 			http.SetCookie(w, &cookie)
 			cookie = http.Cookie{Name: "token", Value: temptoken, Path: "/", Expires: Util.CookieExpires}
 			http.SetCookie(w, &cookie)
 			http.Redirect(w, r, "/Home", http.StatusFound)
-
+			//------------------------comment for test above------------------------------
 			return
 		}
 		//wrong password

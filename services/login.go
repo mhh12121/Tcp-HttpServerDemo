@@ -12,10 +12,10 @@ import (
 	"github.com/golang/protobuf/proto"
 )
 
-
-
 // func LoginHandle(conn net.Conn, ruser data.User) {
+// func LoginHandle(conn net.Conn, toServerD *data.ToServerData, wg *sync.WaitGroup) {
 func LoginHandle(conn net.Conn, toServerD *data.ToServerData) {
+	// defer wg.Done()
 	fmt.Println("login coming!")
 	tmpdata := &data.User{}
 	tmpErr := proto.Unmarshal(toServerD.Httpdata, tmpdata)
@@ -52,8 +52,8 @@ func LoginHandle(conn net.Conn, toServerD *data.ToServerData) {
 			panic(errReturn)
 		}
 		// writer := bufio.NewWriter(conn)
-
-		_, writeErr := conn.Write(returnValueData)
+		packHttp := Util.Pack(Util.PACK_CLIENT, returnValueData, false)
+		_, writeErr := conn.Write(packHttp)
 		if writeErr != nil {
 			fmt.Println("write login:", writeErr)
 			panic(writeErr)
@@ -77,11 +77,15 @@ func LoginHandle(conn net.Conn, toServerD *data.ToServerData) {
 		log.Println("password wrong! any error?:", errorcheck)
 
 		returnValue := &data.ResponseFromServer{Success: proto.Bool(false), TcpData: nil}
+
 		returnValueData, errReturn := proto.Marshal(returnValue)
 		if errReturn != nil {
 			panic(errReturn)
 		}
-		_, writeErr := conn.Write(returnValueData)
+		packHttp := Util.Pack(Util.PACK_CLIENT, returnValueData, false)
+		fmt.Println("login pack:----------------", packHttp)
+		_, writeErr := conn.Write(packHttp)
+		// _, writeErr := conn.Write(returnValueData)
 		if writeErr != nil {
 			panic(writeErr)
 		}
@@ -104,13 +108,14 @@ func LoginHandle(conn net.Conn, toServerD *data.ToServerData) {
 		fmt.Println("errReturn:", errReturn)
 		panic(errReturn)
 	}
-
+	packHttp := Util.Pack(Util.PACK_CLIENT, returnValueData, false)
+	_, writeErr := conn.Write(packHttp)
 	log.Println("login handle tcp write next")
-	_, writeErr := conn.Write(returnValueData)
+	// _, writeErr := conn.Write(returnValueData)
 	if writeErr != nil {
 		fmt.Println("login writeErr", writeErr)
 		panic(writeErr)
 	}
-	
+
 	return
 }

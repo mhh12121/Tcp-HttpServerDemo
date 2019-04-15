@@ -9,6 +9,7 @@ import (
 	"path"
 	"path/filepath"
 	"runtime"
+	"sync"
 
 	"entry_task/Conf"
 	dao "entry_task/DAO"
@@ -29,8 +30,9 @@ var FunctionCode map[int32]func(net.Conn, *data.ToServerData) = map[int32]func(n
 }
 
 type TCPServer struct {
-	Proto string
-	Addr  string
+	Proto    string
+	Addr     string
+	TcpMutex sync.Mutex
 	// ServiceMap map[string]func(net.Conn, *data.ToServerData)
 	// handler func(c *net.Conn)
 }
@@ -91,75 +93,87 @@ Use length description:
 header(8bytes)        +length(4 bytes)=Data1's length   +  IF COMPRESSED(1 byte) +   Data1  +   length(2)//todo
 -----------------------+---------------------------------+------------------------+------------+-------------------
 */
-func reader(conn net.Conn, readerChannel chan []byte) {
+//not used temp
+// func reader(conn net.Conn, readerChannel chan []byte) {
 
-	log.Println("readerchannel begin length-----------------------", len(readerChannel))
-	// realData,ok := <-readerChannel
-	// if ok{
-	// 	log.Println("------------already pass value---------------------------------")
-	// }
-	// log.Println("readerchannel now----------", readerChannel)
-	select {
-	case realData := <-readerChannel:
-		{
-			log.Println("readerchannel length after retrieve-----------------------", len(readerChannel))
-			log.Println("----------tcp channel reader block here------------")
-			toServerD := &data.ToServerData{}
-			dataErr := proto.Unmarshal(realData, toServerD)
-			fmt.Println("readchannel", toServerD)
-			// dataErr := proto.Unmarshal(buff[:int(size)], toServerD)
-			// dataErr := proto.Unmarshal(readData, toServerD)
-			if dataErr != nil {
-				fmt.Println("proto", dataErr)
-				panic(dataErr)
-			}
-			if toServerD.GetCtype() == Util.LOGOUTCODE {
-				fmt.Println("----------logout tcp get reader------------")
-			}
-			// FunctionCode[realSize](con, toServerD)
-			FunctionCode[toServerD.GetCtype()](conn, toServerD)
+// 	log.Println("readerchannel begin length-----------------------", len(readerChannel))
+// 	// realData,ok := <-readerChannel
+// 	// if ok{
+// 	// 	log.Println("------------already pass value---------------------------------")
+// 	// }
+// 	// log.Println("readerchannel now----------", readerChannel)
+// 	select {
+// 	case realData := <-readerChannel:
+// 		{
+// 			log.Println("readerchannel length after retrieve-----------------------", len(readerChannel))
+// 			log.Println("----------tcp channel reader block here------------")
+// 			toServerD := &data.ToServerData{}
+// 			dataErr := proto.Unmarshal(realData, toServerD)
+// 			fmt.Println("readchannel", toServerD)
 
-		}
-		// case <-time.After(time.Second * 10):
-		// 	fmt.Println("10 seconds after reader channel")
-	}
+// 			if dataErr != nil {
+// 				fmt.Println("proto", dataErr)
+// 				panic(dataErr)
+// 			}
+// 			if toServerD.GetCtype() == Util.LOGOUTCODE {
+// 				fmt.Println("----------logout tcp get reader------------")
+// 			}
 
-}
+// 			FunctionCode[toServerD.GetCtype()](conn, toServerD)
+
+// 		}
+// 		// case <-time.After(time.Second * 10):
+// 		// 	fmt.Println("10 seconds after reader channel")
+// 	}
+
+// }
 func (tserver *TCPServer) handleAll(conn net.Conn) {
 	fmt.Println("handleall coming")
 	tmpBuffer := make([]byte, 0) //save splitted data(not included RealData but header,zipField)
-	//readerChannel := make(chan []byte, 1024) //realdata
+	// readerChannel := make(chan []byte, 1024) //realdata
+	// tserver.ReaderChannel = make(chan []byte, 1024)
 	// go reader(conn, readerChannel)
 	// defer close(readerChannel)
 	buffer := make([]byte, 1024)
-	for { //continue read buffer from socket
-		size, err := conn.Read(buffer) //all data at once,but maybe the data is not complete
-		if err != nil {
-			if err == io.EOF {
-				break
-			}
-			fmt.Println("error why handleall", err)
-			return
+	// for { //continue read buffer from socket
+	// var wg sync.WaitGroup
+	// wg.Add(2)
+	size, err := conn.Read(buffer) //all data at once,but maybe the data is not complete
+	if err != nil {
+		if err == io.EOF {
+			fmt.Println("eof", err)
+			// break
 		}
-		tmpBuffer = Util.Unpack(append(tmpBuffer, buffer[:size]...)) //, readerChannel
-		// log.Println("readerchannel length after retrieve-----------------------", len(readerChannel))
-		log.Println("----------tcp channel reader block here------------")
-		toServerD := &data.ToServerData{}
-		dataErr := proto.Unmarshal(tmpBuffer, toServerD)
-		fmt.Println("readchannel", toServerD)
-		// dataErr := proto.Unmarshal(buff[:int(size)], toServerD)
-		// dataErr := proto.Unmarshal(readData, toServerD)
-		if dataErr != nil {
-			fmt.Println("proto", dataErr)
-			panic(dataErr)
-		}
-		if toServerD.GetCtype() == Util.LOGOUTCODE {
-			fmt.Println("----------logout tcp get reader------------")
-		}
-		// FunctionCode[realSize](con, toServerD)
-		FunctionCode[toServerD.GetCtype()](conn, toServerD)
-
+		fmt.Println("error why handleall", err)
+		return
 	}
+	// tmpBuffer = Util.Unpack(append(tmpBuffer, buffer[:size]...), readerChannel)
+	// tserver.TcpMutex.Lock()
+
+	tmpBuffer = Util.Unpack(append(tmpBuffer, buffer[:size]...)) //, readerChannel
+	// tserver.TcpMutex.Unlock()
+
+	// log.Println("readerchannel length after retrieve-----------------------", len(readerChannel))
+	//--------------------------------------not used channel below------------------------------
+	log.Println("----------tcp channel reader block here------------")
+	toServerD := &data.ToServerData{}
+	dataErr := proto.Unmarshal(tmpBuffer, toServerD)
+	fmt.Println("readchannel", toServerD)
+	// dataErr := proto.Unmarshal(buff[:int(size)], toServerD)
+	// dataErr := proto.Unmarshal(readData, toServerD)
+	if dataErr != nil {
+		fmt.Println("proto", dataErr)
+		panic(dataErr)
+	}
+	if toServerD.GetCtype() == Util.LOGOUTCODE {
+		fmt.Println("----------logout tcp get reader------------")
+	}
+
+	FunctionCode[toServerD.GetCtype()](conn, toServerD)
+	// wg.Wait()
+	// tserver.TcpMutex.Unlock()
+
+	// }
 	fmt.Println("handleall ___ end0--------------")
 
 	// Msglength := make([]byte, 4)
@@ -273,7 +287,6 @@ func init() {
 	// log.Println("dafas", Conf.Config)
 }
 func main() {
-
 	dao.InitDB()
 	// dao.RedisInit()
 	fmt.Println("tcp start ", Conf.Config.Connect.Tcphost)

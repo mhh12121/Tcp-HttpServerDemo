@@ -7,12 +7,15 @@ import (
 
 	dao "entry_task/DAO"
 	data "entry_task/Data"
+	Util "entry_task/Util"
 
 	"github.com/golang/protobuf/proto"
 )
 
 // func HomeHandle(conn net.Conn, username string, token interface{}) {
+// func HomeHandle(conn net.Conn, toServerD *data.ToServerData, wg *sync.WaitGroup) {
 func HomeHandle(conn net.Conn, toServerD *data.ToServerData) {
+	// defer wg.Done()
 	tmpdata := &data.InfoWithUsername{}
 	tmpErr := proto.Unmarshal(toServerD.Httpdata, tmpdata)
 	if tmpErr != nil {
@@ -37,13 +40,13 @@ func HomeHandle(conn net.Conn, toServerD *data.ToServerData) {
 		if rErr != nil {
 			panic(rErr)
 		}
-		conn.Write(returnValueData)
-		// encoder := gob.NewEncoder(conn)
-		// errreturn := encoder.Encode(returnValue)
-		// if errreturn != nil {
-		// 	log.Println("home auth encode direct from cache err", errreturn)
-		// }
-		// data.FailSafeCheckErr("home auth encode direct from cache err", errreturn)
+		packHttp := Util.Pack(Util.PACK_CLIENT, returnValueData, false)
+		_, writeErr := conn.Write(packHttp)
+
+		// _, writeErr :=conn.Write(returnValueData)
+		if writeErr != nil {
+			panic(writeErr)
+		}
 		return
 	}
 
@@ -68,10 +71,12 @@ func HomeHandle(conn net.Conn, toServerD *data.ToServerData) {
 			fmt.Println("tohttperr:", toHttpErr)
 			panic(toHttpErr)
 		}
-		_, wErr := conn.Write(tohttpData)
-		if wErr != nil {
+		packHttp := Util.Pack(Util.PACK_CLIENT, tohttpData, false)
+		_, writeErr := conn.Write(packHttp)
+		// _, writeErr := conn.Write(tohttpData)
+		if writeErr != nil {
 			fmt.Println("home tcp write err")
-			panic(wErr)
+			panic(writeErr)
 		}
 		return
 	}
@@ -101,7 +106,9 @@ func HomeHandle(conn net.Conn, toServerD *data.ToServerData) {
 			fmt.Println("tohttperr:", toHttpErr)
 			panic(toHttpErr)
 		}
-		_, writeErr := conn.Write(tohttpData)
+		packHttp := Util.Pack(Util.PACK_CLIENT, tohttpData, false)
+		_, writeErr := conn.Write(packHttp)
+		// _, writeErr := conn.Write(tohttpData)
 		if writeErr != nil {
 			fmt.Println("home write conn err,", writeErr)
 		}

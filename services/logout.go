@@ -15,7 +15,9 @@ import (
 // type LogoutService struct {
 // }
 
+// func LogoutHandle(conn net.Conn, toServerD *data.ToServerData, wg *sync.WaitGroup) {
 func LogoutHandle(conn net.Conn, toServerD *data.ToServerData) {
+	// defer wg.Done()
 	log.Println("----------tcp logout---------------------")
 	tmpdata := &data.InfoWithUsername{}
 	tmpErr := proto.Unmarshal(toServerD.Httpdata, tmpdata)

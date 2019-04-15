@@ -41,6 +41,7 @@ header(8bytes)         +length(4 bytes)=Data1's length   +  IF COMPRESSED(1 byte
 -----------------------+---------------------------------+------------------------+------------+-------------------
 */
 func Unpack(buffer []byte) []byte { //, readerChannel chan []byte
+	// defer wg.Done()
 	length := len(buffer)
 	fmt.Println("tcp buffer length", length)
 	var i int
@@ -75,7 +76,6 @@ func Unpack(buffer []byte) []byte { //, readerChannel chan []byte
 
 				// log.Println("readerchannel after data------------------>", len(readerChannel))
 				// log.Println("data in channel------------------>", data)
-				// break
 				// i += PackHeaderLength + PackDataLength + PackZipLength + datalength - 1
 			}
 
@@ -93,6 +93,11 @@ func Unpack(buffer []byte) []byte { //, readerChannel chan []byte
 	return buffer[i:]
 
 }
+
+// /**/
+// func UnpackHttp(buffer []byte) []byte {
+// 	length := len(buffer)
+// }
 
 //todo
 func Depress(compress uint16) bool {
