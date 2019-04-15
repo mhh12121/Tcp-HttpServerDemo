@@ -3,21 +3,19 @@ package service
 import (
 	"fmt"
 	"log"
-	"net"
 
 	dao "entry_task/DAO"
 	data "entry_task/Data"
-	Util "entry_task/Util"
 
 	"github.com/golang/protobuf/proto"
 )
 
 // func HomeHandle(conn net.Conn, username string, token interface{}) {
 // func HomeHandle(conn net.Conn, toServerD *data.ToServerData, wg *sync.WaitGroup) {
-func HomeHandle(conn net.Conn, toServerD *data.ToServerData) {
+func HomeHandle(toServerD *data.ToServerData) (*data.ResponseFromServer, error) {
 	// defer wg.Done()
 	tmpdata := &data.InfoWithUsername{}
-	tmpErr := proto.Unmarshal(toServerD.Httpdata, tmpdata)
+	tmpErr := proto.Unmarshal(toServerD.GetHttpdata(), tmpdata)
 	if tmpErr != nil {
 		fmt.Println("login err:", tmpErr)
 		panic(tmpErr)
@@ -36,18 +34,18 @@ func HomeHandle(conn net.Conn, toServerD *data.ToServerData) {
 		// gob.Register(new(data.ResponseFromServer))
 
 		returnValue := &data.ResponseFromServer{Success: proto.Bool(false), TcpData: nil}
-		returnValueData, rErr := proto.Marshal(returnValue)
-		if rErr != nil {
-			panic(rErr)
-		}
-		packHttp := Util.Pack(Util.PACK_CLIENT, returnValueData, false)
-		_, writeErr := conn.Write(packHttp)
+		// returnValueData, rErr := proto.Marshal(returnValue)
+		// if rErr != nil {
+		// 	panic(rErr)
+		// }
+		// packHttp := Util.Pack(Util.PACK_CLIENT, returnValueData, false)
+		// _, writeErr := conn.Write(packHttp)
 
-		// _, writeErr :=conn.Write(returnValueData)
-		if writeErr != nil {
-			panic(writeErr)
-		}
-		return
+		// // _, writeErr :=conn.Write(returnValueData)
+		// if writeErr != nil {
+		// 	panic(writeErr)
+		// }
+		return returnValue, nil
 	}
 
 	//First go through the Redis get cache
@@ -66,19 +64,19 @@ func HomeHandle(conn net.Conn, toServerD *data.ToServerData) {
 			panic(userErr)
 		}
 		tohttp := &data.ResponseFromServer{Success: proto.Bool(true), TcpData: userData}
-		tohttpData, toHttpErr := proto.Marshal(tohttp)
-		if toHttpErr != nil {
-			fmt.Println("tohttperr:", toHttpErr)
-			panic(toHttpErr)
-		}
-		packHttp := Util.Pack(Util.PACK_CLIENT, tohttpData, false)
-		_, writeErr := conn.Write(packHttp)
-		// _, writeErr := conn.Write(tohttpData)
-		if writeErr != nil {
-			fmt.Println("home tcp write err")
-			panic(writeErr)
-		}
-		return
+		// tohttpData, toHttpErr := proto.Marshal(tohttp)
+		// if toHttpErr != nil {
+		// 	fmt.Println("tohttperr:", toHttpErr)
+		// 	panic(toHttpErr)
+		// }
+		// packHttp := Util.Pack(Util.PACK_CLIENT, tohttpData, false)
+		// _, writeErr := conn.Write(packHttp)
+		// // _, writeErr := conn.Write(tohttpData)
+		// if writeErr != nil {
+		// 	fmt.Println("home tcp write err")
+		// 	panic(writeErr)
+		// }
+		return tohttp, nil
 	}
 	log.Println("-----------not at redis,go to mysql---------------------")
 	//cache expires or not exists then go to mysql
@@ -101,22 +99,22 @@ func HomeHandle(conn net.Conn, toServerD *data.ToServerData) {
 			panic(userdbErr)
 		}
 		tohttp := &data.ResponseFromServer{Success: proto.Bool(true), TcpData: userdbData}
-		tohttpData, toHttpErr := proto.Marshal(tohttp)
-		if toHttpErr != nil {
-			fmt.Println("tohttperr:", toHttpErr)
-			panic(toHttpErr)
-		}
-		packHttp := Util.Pack(Util.PACK_CLIENT, tohttpData, false)
-		_, writeErr := conn.Write(packHttp)
-		// _, writeErr := conn.Write(tohttpData)
-		if writeErr != nil {
-			fmt.Println("home write conn err,", writeErr)
-		}
+		// tohttpData, toHttpErr := proto.Marshal(tohttp)
+		// if toHttpErr != nil {
+		// 	fmt.Println("tohttperr:", toHttpErr)
+		// 	panic(toHttpErr)
+		// }
+		// packHttp := Util.Pack(Util.PACK_CLIENT, tohttpData, false)
+		// _, writeErr := conn.Write(packHttp)
+		// // _, writeErr := conn.Write(tohttpData)
+		// if writeErr != nil {
+		// 	fmt.Println("home write conn err,", writeErr)
+		// }
 
-		return
+		return tohttp, nil
 		// }
 
 	}
 
-	return
+	return nil, nil
 }

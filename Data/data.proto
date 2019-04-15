@@ -1,4 +1,18 @@
 syntax = "proto2";
+
+package data;
+
+service Authenticate{
+	rpc login(toServerData) returns (ResponseFromServer){}
+	rpc home(toServerData) returns(ResponseFromServer){}
+	rpc logout(toServerData) returns(ResponseFromServer){}
+}
+service Update{
+	rpc updateNickName(toServerData) returns(ResponseFromServer){}
+	rpc updateAvatar(toServerData) returns(ResponseFromServer){}
+}
+
+
 message toServerData{
     required int32 ctype = 1;
     optional bytes httpdata=2;

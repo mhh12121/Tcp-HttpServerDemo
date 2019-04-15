@@ -1,7 +1,7 @@
 package main
 
 import (
-	"bufio"
+	"context"
 	"encoding/json"
 	"entry_task/Conf"
 	"fmt"
@@ -10,20 +10,22 @@ import (
 	"math/rand"
 	"net"
 	"net/http"
-	"os"
 	"path"
 	"runtime"
+	"time"
 
 	data "entry_task/Data"
 	Util "entry_task/Util"
 	service "entry_task/services"
 
 	"github.com/golang/protobuf/proto"
+	"google.golang.org/grpc"
 	pool "gopkg.in/fatih/pool.v2"
 )
 
 var connpool pool.Pool
 var globalcon net.Conn
+var addr string
 
 func init() {
 
@@ -44,20 +46,20 @@ func main() {
 	// var err error
 	// tcpconn, err = net.Dial("tcp", Util.Tcpaddress+":"+Util.Tcpport)
 	// tcpconn.SetReadDeadline(time.Now().Add(Util.TimeoutDuration))
-	addr := Conf.Config.Connect.Tcphost + ":" + Conf.Config.Connect.Tcpport
-	tcpAddr, addErr := net.ResolveTCPAddr("tcp4", addr)
-	if addErr != nil {
-		fmt.Fprintf(os.Stderr, "Fatal error: %s", addErr.Error())
-		os.Exit(1)
-	}
-	factory := func() (net.Conn, error) {
-		return net.DialTCP("tcp", nil, tcpAddr)
-	}
-	var err error
-	connpool, err = pool.NewChannelPool(Conf.Config.Chanpool.Initsize, Conf.Config.Chanpool.Maxsize, factory)
-	if err != nil {
-		panic(err)
-	}
+	addr = Conf.Config.Connect.Tcphost + ":" + Conf.Config.Connect.Tcpport
+	// tcpAddr, addErr := net.ResolveTCPAddr("tcp4", addr)
+	// if addErr != nil {
+	// 	fmt.Fprintf(os.Stderr, "Fatal error: %s", addErr.Error())
+	// 	os.Exit(1)
+	// }
+	// factory := func() (net.Conn, error) {
+	// 	return net.DialTCP("tcp", nil, tcpAddr)
+	// }
+	// var err error
+	// connpool, err = pool.NewChannelPool(Conf.Config.Chanpool.Initsize, Conf.Config.Chanpool.Maxsize, factory)
+	// if err != nil {
+	// 	panic(err)
+	// }
 
 	// con, err := net.("tcp", nil, tcpAddr)
 	// if err != nil {
@@ -96,224 +98,210 @@ func GenerateToken(len int) string {
 	return fmt.Sprintf("%x", b)
 }
 
-//some bugs here???//todo
-func ReadByteLoop(conn net.Conn) []byte {
-	connbuf := bufio.NewReader(conn)
-	b, _ := connbuf.ReadByte()
-	var msgData []byte
-	if connbuf.Buffered() > 0 {
-
-		msgData = append(msgData, b)
-		for connbuf.Buffered() > 0 {
-			b, err := connbuf.ReadByte()
-			if err != nil {
-				fmt.Print("unreadable readbyte or null ", err)
-				break
-
-			}
-			msgData = append(msgData, b)
-		}
-
-	}
-	return msgData
-}
-
 //get response from server
-func readServer(w http.ResponseWriter, r *http.Request, tcpconn net.Conn, ctype int32) (interface{}, bool) {
-	buffer := make([]byte, 1024)
-	dataServer := make([]byte, 0)
-	// rw := bufio.NewReadWriter(bufio.NewReader(tcpconn), bufio.NewWriter(tcpconn))
-	// c := bufio.NewReader(tcpconn)
-	// defer tcpconn.Close()
-	// <-readchan
-	// var wg sync.WaitGroup
-	fmt.Println("pass readserver")
-	// wg.Add(1)
-	switch ctype {
-	case Util.LOGINCODE:
-		{
-			size, httperr := tcpconn.Read(buffer)
-			fmt.Println("http util login read size---------------:", size)
-			// dataServer := ReadByteLoop(tcpconn)
-			dataServer = Util.Unpack(append(dataServer, buffer[:size]...))
-			// for {
+// func readServer(w http.ResponseWriter, r *http.Request, tcpconn net.Conn, ctype int32) (interface{}, bool) {
+// 	buffer := make([]byte, 1024)
+// 	dataServer := make([]byte, 0)
+// 	// rw := bufio.NewReadWriter(bufio.NewReader(tcpconn), bufio.NewWriter(tcpconn))
+// 	// c := bufio.NewReader(tcpconn)
+// 	// defer tcpconn.Close()
+// 	// <-readchan
+// 	// var wg sync.WaitGroup
+// 	fmt.Println("pass readserver")
+// 	// wg.Add(1)
+// 	switch ctype {
+// 	case Util.LOGINCODE:
+// 		{
+// 			size, httperr := tcpconn.Read(buffer)
+// 			fmt.Println("http util login read size---------------:", size)
+// 			// dataServer := ReadByteLoop(tcpconn)
+// 			dataServer = Util.Unpack(append(dataServer, buffer[:size]...))
+// 			// for {
 
-			// // size, httperr := globalcon.Read(dataServer)
+// 			// // size, httperr := globalcon.Read(dataServer)
 
-			if httperr != nil {
-				panic(httperr)
-			}
-			// fmt.Println("http get from server length", size)
-			// dataServer, rErr := ioutil.ReadAll(tcpconn) //can it really read to the end???//#todo
-			// fmt.Println("dataserver", dataServer)
-			// if rErr != nil {
-			// 	fmt.Fprintf(os.Stderr, "Fatal error: %s", rErr.Error())
-			// 	os.Exit(1)
+// 			if httperr != nil {
+// 				panic(httperr)
+// 			}
+// 			// fmt.Println("http get from server length", size)
+// 			// dataServer, rErr := ioutil.ReadAll(tcpconn) //can it really read to the end???//#todo
+// 			// fmt.Println("dataserver", dataServer)
+// 			// if rErr != nil {
+// 			// 	fmt.Fprintf(os.Stderr, "Fatal error: %s", rErr.Error())
+// 			// 	os.Exit(1)
 
-			// }
-			// dataServer = bytes.Trim(dataServer, "\x00")
-			dataResp := &data.ResponseFromServer{}
-			dataErr := proto.Unmarshal(dataServer, dataResp) //illeagl tag 0
-			if dataErr != nil {
-				fmt.Println("proto login unmarshal", dataErr)
-				panic(dataErr)
-			}
+// 			// }
+// 			// dataServer = bytes.Trim(dataServer, "\x00")
+// 			dataResp := &data.ResponseFromServer{}
+// 			dataErr := proto.Unmarshal(dataServer, dataResp) //illeagl tag 0
+// 			if dataErr != nil {
+// 				fmt.Println("proto login unmarshal", dataErr)
+// 				panic(dataErr)
+// 			}
 
-			//something wrong in tcp server
-			//or login fail
-			fmt.Println("http read server:", dataResp)
-			if dataResp.GetSuccess() {
-				return nil, true
-			}
-			// else {
-			// 	break
-			// }
+// 			//something wrong in tcp server
+// 			//or login fail
+// 			fmt.Println("http read server:", dataResp)
+// 			if dataResp.GetSuccess() {
+// 				return nil, true
+// 			}
+// 			// else {
+// 			// 	break
+// 			// }
 
-			// }
-			return nil, false
-		}
-	case Util.HOMECODE:
-		{
-			size, httperr := tcpconn.Read(buffer)
-			// dataServer := ReadByteLoop(tcpconn)
-			dataServer = Util.Unpack(append(dataServer, buffer[:size]...))
-			// _, httperr := tcpconn.Read(dataServer)
-			// // _, httperr := globalcon.Read(dataServer)
-			if httperr != nil {
-				panic(httperr)
-			}
-			// // fmt.Println("http get from server length", size)
-			// dataServer = bytes.Trim(dataServer, "\x00")
-			// dataServer := ReadByteLoop(tcpconn)
-			tmp := &data.ResponseFromServer{}
-			tmpErr := proto.Unmarshal(dataServer, tmp)
-			if tmpErr != nil {
-				fmt.Println("http home unmarshal err", tmpErr)
-				panic(tmpErr)
-			}
+// 			// }
+// 			return nil, false
+// 		}
+// 	case Util.HOMECODE:
+// 		{
+// 			size, httperr := tcpconn.Read(buffer)
+// 			// dataServer := ReadByteLoop(tcpconn)
+// 			dataServer = Util.Unpack(append(dataServer, buffer[:size]...))
+// 			// _, httperr := tcpconn.Read(dataServer)
+// 			// // _, httperr := globalcon.Read(dataServer)
+// 			if httperr != nil {
+// 				panic(httperr)
+// 			}
+// 			// // fmt.Println("http get from server length", size)
+// 			// dataServer = bytes.Trim(dataServer, "\x00")
+// 			// dataServer := ReadByteLoop(tcpconn)
+// 			tmp := &data.ResponseFromServer{}
+// 			tmpErr := proto.Unmarshal(dataServer, tmp)
+// 			if tmpErr != nil {
+// 				fmt.Println("http home unmarshal err", tmpErr)
+// 				panic(tmpErr)
+// 			}
 
-			if tmp.GetSuccess() {
-				//token expires or not correct
-				if tmp.GetTcpData() == nil {
-					return nil, false
-				}
-				tcpData := &data.RealUser{}
-				tcpErr := proto.Unmarshal(tmp.GetTcpData(), tcpData)
-				if tcpErr != nil {
-					panic(tcpErr)
-				}
-				//token pass
-				//but
-				fmt.Println("redis cache not update")
+// 			if tmp.GetSuccess() {
+// 				//token expires or not correct
+// 				if tmp.GetTcpData() == nil {
+// 					return nil, false
+// 				}
+// 				tcpData := &data.RealUser{}
+// 				tcpErr := proto.Unmarshal(tmp.GetTcpData(), tcpData)
+// 				if tcpErr != nil {
+// 					panic(tcpErr)
+// 				}
+// 				//token pass
+// 				//but
+// 				fmt.Println("redis cache not update")
 
-				return tcpData, true
-			}
-			// }
-			// return nil, false
-		}
-	case Util.LOGOUTCODE:
-		{
-			log.Println("--------------logout read from tcp-------------------")
-			// _, cerr := tcpconn.Read(dataServer)
-			// // _, cerr := globalcon.Read(dataServer)
-			// // .Read(buff)
-			// log.Println("--------------logout read data-------------------")
-			// if cerr != nil {
-			// 	fmt.Println("logout buferr", cerr)
-			// 	panic(cerr)
-			// }
-			// dataServer = bytes.Trim(dataServer, "\x00")
-			dataServer := ReadByteLoop(tcpconn)
-			tmp := &data.ResponseFromServer{}
-			tmpErr := proto.Unmarshal(dataServer, tmp)
-			if tmpErr != nil {
-				fmt.Println("http logout unmarshal err", tmpErr)
-				panic(tmpErr)
-			}
-			if tmp.GetSuccess() {
-				return tmp.GetTcpData(), tmp.GetSuccess()
-			}
+// 				return tcpData, true
+// 			}
+// 			// }
+// 			// return nil, false
+// 		}
+// 	case Util.LOGOUTCODE:
+// 		{
+// 			log.Println("--------------logout read from tcp-------------------")
+// 			// _, cerr := tcpconn.Read(dataServer)
+// 			// // _, cerr := globalcon.Read(dataServer)
+// 			// // .Read(buff)
+// 			// log.Println("--------------logout read data-------------------")
+// 			// if cerr != nil {
+// 			// 	fmt.Println("logout buferr", cerr)
+// 			// 	panic(cerr)
+// 			// }
+// 			// dataServer = bytes.Trim(dataServer, "\x00")
+// 			dataServer := ReadByteLoop(tcpconn)
+// 			tmp := &data.ResponseFromServer{}
+// 			tmpErr := proto.Unmarshal(dataServer, tmp)
+// 			if tmpErr != nil {
+// 				fmt.Println("http logout unmarshal err", tmpErr)
+// 				panic(tmpErr)
+// 			}
+// 			if tmp.GetSuccess() {
+// 				return tmp.GetTcpData(), tmp.GetSuccess()
+// 			}
 
-			return nil, false
-		}
-		// case "changeNickName":
-		// 	{
-		// 		for {
-		// 			// bufio.NewReader(tcpconn)
-		// 			size, cerr := tcpconn.Read(buff)
-		// 			// .Read(buff)
-		// 			if cerr != nil {
-		// 				fmt.Println("nickname buferr", cerr)
-		// 				panic(cerr)
-		// 			}
-		// 			if size == 0 {
-		// 				fmt.Println("nickname nothing in conn")
-		// 				return nil, false
-		// 			}
+// 			return nil, false
+// 		}
+// 		// case "changeNickName":
+// 		// 	{
+// 		// 		for {
+// 		// 			// bufio.NewReader(tcpconn)
+// 		// 			size, cerr := tcpconn.Read(buff)
+// 		// 			// .Read(buff)
+// 		// 			if cerr != nil {
+// 		// 				fmt.Println("nickname buferr", cerr)
+// 		// 				panic(cerr)
+// 		// 			}
+// 		// 			if size == 0 {
+// 		// 				fmt.Println("nickname nothing in conn")
+// 		// 				return nil, false
+// 		// 			}
 
-		// 			tmp := &data.ResponseFromServer{}
-		// 			tmpErr := proto.Unmarshal(buff[:size], tmp)
-		// 			if tmpErr != nil {
-		// 				fmt.Println("http nickname unmarshal err", tmpErr)
-		// 				panic(tmpErr)
-		// 			}
+// 		// 			tmp := &data.ResponseFromServer{}
+// 		// 			tmpErr := proto.Unmarshal(buff[:size], tmp)
+// 		// 			if tmpErr != nil {
+// 		// 				fmt.Println("http nickname unmarshal err", tmpErr)
+// 		// 				panic(tmpErr)
+// 		// 			}
 
-		// 			if tmp.GetSuccess() {
+// 		// 			if tmp.GetSuccess() {
 
-		// 				// if tmp.GetTcpData() == nil {
-		// 				// 	break
-		// 				// }
+// 		// 				// if tmp.GetTcpData() == nil {
+// 		// 				// 	break
+// 		// 				// }
 
-		// 				return nil, true
-		// 			} else { //token expires or not correct
-		// 				break
-		// 			}
-		// 		}
-		// 		return nil, false
-		// 	}
-		// case "uploadAvatar":
-		// 	{
-		// 		for {
-		// 			size, cerr := tcpconn.Read(buff)
-		// 			if cerr != nil {
-		// 				panic(cerr)
-		// 			}
-		// 			if size == 0 {
-		// 				return nil, false
-		// 			}
+// 		// 				return nil, true
+// 		// 			} else { //token expires or not correct
+// 		// 				break
+// 		// 			}
+// 		// 		}
+// 		// 		return nil, false
+// 		// 	}
+// 		// case "uploadAvatar":
+// 		// 	{
+// 		// 		for {
+// 		// 			size, cerr := tcpconn.Read(buff)
+// 		// 			if cerr != nil {
+// 		// 				panic(cerr)
+// 		// 			}
+// 		// 			if size == 0 {
+// 		// 				return nil, false
+// 		// 			}
 
-		// 			tmp := &data.ResponseFromServer{}
-		// 			tmpErr := proto.Unmarshal(buff[:size], tmp)
-		// 			if tmpErr != nil {
-		// 				fmt.Println("avatar unmarshal")
-		// 				panic(tmpErr)
-		// 			}
-		// 			if tmp.GetSuccess() {
-		// 				return nil, true
-		// 			} else {
-		// 				break
-		// 			}
+// 		// 			tmp := &data.ResponseFromServer{}
+// 		// 			tmpErr := proto.Unmarshal(buff[:size], tmp)
+// 		// 			if tmpErr != nil {
+// 		// 				fmt.Println("avatar unmarshal")
+// 		// 				panic(tmpErr)
+// 		// 			}
+// 		// 			if tmp.GetSuccess() {
+// 		// 				return nil, true
+// 		// 			} else {
+// 		// 				break
+// 		// 			}
 
-		// 		}
+// 		// 		}
 
-		// 		return nil, false
-		// 	}
+// 		// 		return nil, false
+// 		// 	}
 
-	}
-	return nil, false
+// 	}
+// 	return nil, false
 
-}
+// }
 func logoutHandler(w http.ResponseWriter, r *http.Request) {
 	if r.Method == http.MethodPost {
 		//todo
 		log.SetFlags(log.LstdFlags | log.Lshortfile)
 		fmt.Println("----------------logout-------------------")
-		tcpconn, errget := connpool.Get()
-		defer tcpconn.Close()
-		if errget != nil {
-			panic(errget)
+		// tcpconn, errget := connpool.Get()
+		// defer tcpconn.Close()
+		// if errget != nil {
+		// 	panic(errget)
+		// }
+		// log.Println("logout pool length---------------", connpool.Len())
+		conn, err := grpc.Dial(addr, grpc.WithInsecure())
+		if err != nil {
+			log.Fatalf("logout client fail", err)
 		}
-		log.Println("logout pool length---------------", connpool.Len())
+		defer conn.Close()
+
+		c := data.NewAuthenticateClient(conn)
+
 		// defer tcpconn.Close()
 		user, erruser := r.Cookie("username")
 		if erruser != nil {
@@ -332,20 +320,26 @@ func logoutHandler(w http.ResponseWriter, r *http.Request) {
 		}
 
 		tmp := &data.ToServerData{Ctype: proto.Int32(Util.LOGOUTCODE), Httpdata: httpData}
-		tmpdata, tErr := proto.Marshal(tmp)
-		if tErr != nil {
-			panic(tErr)
-		}
-		wrappedSend := Util.Pack(Util.PACK_CLIENT, tmpdata, false)
-		// _, writeErr := globalcon.Write(wrappedSend)
-		_, writeErr := tcpconn.Write(wrappedSend)
-		if writeErr != nil {
-			panic(writeErr)
-		}
+		// tmpdata, tErr := proto.Marshal(tmp)
+		// if tErr != nil {
+		// 	panic(tErr)
+		// }
+		// wrappedSend := Util.Pack(Util.PACK_CLIENT, tmpdata, false)
+		// // _, writeErr := globalcon.Write(wrappedSend)
+		// _, writeErr := tcpconn.Write(wrappedSend)
+		// if writeErr != nil {
+		// 	panic(writeErr)
+		// }
 		// for {
 		//go to tcp to invalid the cache
-
-		_, successlogout := readServer(w, r, tcpconn, Util.LOGOUTCODE)
+		ctx, cancel := context.WithTimeout(context.Background(), time.Second)
+		defer cancel()
+		res, errR := c.Logout(ctx, tmp)
+		if errR != nil {
+			log.Fatalf("logout res failed", errR)
+		}
+		successlogout := res.GetSuccess()
+		// _, successlogout := readServer(w, r, tcpconn, Util.LOGOUTCODE)
 		// _, successlogout := readServer(w, r, globalcon, Util.LOGOUTCODE)
 		log.Println("-----------logout successlogout ", successlogout)
 		if successlogout { //to clear all cookie
@@ -456,16 +450,23 @@ func loginHandler(w http.ResponseWriter, r *http.Request) {
 	//login authentication
 	if r.Method == http.MethodPost {
 
-		tcpconn, errget := connpool.Get()
-		defer tcpconn.Close()
-		if errget != nil {
-			panic(errget)
-		}
+		// tcpconn, errget := connpool.Get()
+		// defer tcpconn.Close()
+		// if errget != nil {
+		// 	panic(errget)
+		// }
 
 		// tcpconn.SetReadDeadline(time.Now().Add(5 * time.Second))
 		// fmt.Println("tcp conn and http conn", tcpconn.RemoteAddr().String(), tcpconn.LocalAddr().String())
 		// fmt.Println("tcp conn and http conn", globalcon.RemoteAddr().String(), globalcon.LocalAddr().String())
-
+		conn, err := grpc.Dial(addr, grpc.WithInsecure())
+		if err != nil {
+			log.Fatalf("grpc login fail:", err)
+		}
+		defer conn.Close()
+		c := data.NewAuthenticateClient(conn)
+		ctx, cancel := context.WithTimeout(context.Background(), time.Second)
+		defer cancel()
 		fmt.Println("enter!!!!!!")
 		username := r.FormValue("username")
 		password := r.FormValue("password")
@@ -485,23 +486,27 @@ func loginHandler(w http.ResponseWriter, r *http.Request) {
 			panic(tmpErr)
 		}
 		tmpdata := &data.ToServerData{Ctype: proto.Int32(Util.LOGINCODE), Httpdata: tempuserData}
-		tmpdataSend, _ := proto.Marshal(tmpdata)
-		wrappedSend := Util.Pack(Util.PACK_CLIENT, tmpdataSend, false)
-		// fmt.Println("encode wrappedsend pwd:", wrappedSend)
-		fmt.Println("encode wrappedsend length", len(wrappedSend))
-		_, err := tcpconn.Write(wrappedSend)
-		// _, err := globalcon.Write(wrappedSend)
-		if err != nil {
-			fmt.Println("login write err:", err)
-			panic(err)
+		res, errR := c.Login(ctx, tmpdata)
+		if errR != nil {
+			log.Fatalf("login response failed", errR)
 		}
+		// tmpdataSend, _ := proto.Marshal(tmpdata)
+		// wrappedSend := Util.Pack(Util.PACK_CLIENT, tmpdataSend, false)
+		// // fmt.Println("encode wrappedsend pwd:", wrappedSend)
+		// fmt.Println("encode wrappedsend length", len(wrappedSend))
+		// _, err := tcpconn.Write(wrappedSend)
+		// // _, err := globalcon.Write(wrappedSend)
+		// if err != nil {
+		// 	fmt.Println("login write err:", err)
+		// 	panic(err)
+		// }
 
-		fmt.Println("encode usename pwd:", tmpdata)
+		successlogin := res.GetSuccess()
 		// //loop to listen from server
 
 		// for {
-		// time.Sleep(2 * time.Second)
-		_, successlogin := readServer(w, r, tcpconn, Util.LOGINCODE)
+
+		// _, successlogin := readServer(w, r, tcpconn, Util.LOGINCODE)
 		// _, successlogin := readServer(w, r, globalcon, Util.LOGINCODE)
 		//success login
 		// tcpconn.Close()
@@ -551,12 +556,17 @@ func homeHandler(w http.ResponseWriter, r *http.Request) {
 			t.Execute(w, nil)
 			return
 		}
-
-		tcpconn, errget := connpool.Get()
-		defer tcpconn.Close()
-		if errget != nil {
-			panic(errget)
+		conn, err := grpc.Dial(addr, grpc.WithInsecure())
+		if err != nil {
+			log.Fatalf("home getfrom server fail", err)
 		}
+		defer conn.Close()
+		c := data.NewAuthenticateClient(conn)
+		// tcpconn, errget := connpool.Get()
+		// defer tcpconn.Close()
+		// if errget != nil {
+		// 	panic(errget)
+		// }
 		log.Println("home rendering")
 
 		//send to tcp server
@@ -566,30 +576,41 @@ func homeHandler(w http.ResponseWriter, r *http.Request) {
 			panic(terr)
 		}
 		tmp := &data.ToServerData{Ctype: proto.Int32(Util.HOMECODE), Httpdata: tokenwithusernameData}
-		tmpData, tmpErr := proto.Marshal(tmp)
-		if tmpErr != nil {
-			panic(tmpErr)
-		}
-		fmt.Println("http cookie ", cookieuser.Value)
+		// tmpData, tmpErr := proto.Marshal(tmp)
+		// if tmpErr != nil {
+		// 	panic(tmpErr)
+		// }
+		// fmt.Println("http cookie ", cookieuser.Value)
 		//----------------wrap handle code-------------
 		// wrappedSend := make([]byte, len(tmpData))
 		// binary.BigEndian.PutUint32(wrappedSend, HOMECODE)
 		// //----------------wrap compress code-------------
 		// compressMark := make([]byte, 1)
 		// binary.BigEndian.PutUint16(compressMark, NOCOMPRESS)
-		wrappedSend := Util.Pack(Util.PACK_CLIENT, tmpData, false)
-		_, werr := tcpconn.Write(wrappedSend)
-		// _, werr := globalcon.Write(wrappedSend)
-		if werr != nil {
-			panic(werr)
-		}
-		log.Println("home render loop", tmpData)
-		datar, successHome := readServer(w, r, tcpconn, Util.HOMECODE)
+		// wrappedSend := Util.Pack(Util.PACK_CLIENT, tmpData, false)
+		// _, werr := tcpconn.Write(wrappedSend)
+		// // _, werr := globalcon.Write(wrappedSend)
+		// if werr != nil {
+		// 	panic(werr)
+		// }
+		// log.Println("home render loop", tmpData)
+		// datar, successHome := readServer(w, r, tcpconn, Util.HOMECODE)
 		// datar, successHome := readServer(w, r, globalcon, Util.HOMECODE)
-
+		ctx, cancel := context.WithTimeout(context.Background(), time.Second)
+		defer cancel()
+		res, errR := c.Home(ctx, tmp)
+		if errR != nil {
+			log.Fatalf("home response failed", errR)
+		}
+		successHome := res.GetSuccess()
 		//token correct
 		if successHome {
-			ruser := datar.(*data.RealUser)
+			tmpData := res.GetTcpData()
+			ruser := &data.RealUser{}
+			errU := proto.Unmarshal(tmpData, ruser)
+			if errU != nil {
+				log.Fatalf("home get user msg fail", errU)
+			}
 			t.Execute(w, &ruser)
 			return
 		}

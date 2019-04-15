@@ -2,6 +2,7 @@ package main
 
 import (
 	"bufio"
+	"context"
 	"fmt"
 	"io"
 	"log"
@@ -19,15 +20,16 @@ import (
 
 	_ "github.com/go-sql-driver/mysql"
 	"github.com/golang/protobuf/proto"
+	"google.golang.org/grpc"
 )
 
-var FunctionCode map[int32]func(net.Conn, *data.ToServerData) = map[int32]func(net.Conn, *data.ToServerData){
-	Util.LOGINCODE:  service.LoginHandle,
-	Util.LOGOUTCODE: service.LogoutHandle,
-	Util.HOMECODE:   service.HomeHandle,
+// var FunctionCode map[int32]func(net.Conn, *data.ToServerData) = map[int32]func(net.Conn, *data.ToServerData){
+// 	Util.LOGINCODE:  service.LoginHandle,
+// 	Util.LOGOUTCODE: service.LogoutHandle,
+// 	Util.HOMECODE:   service.HomeHandle,
 
-	// 8003: service.LogoutHandle,
-}
+// 	// 8003: service.LogoutHandle,
+// }
 
 type TCPServer struct {
 	Proto    string
@@ -37,6 +39,18 @@ type TCPServer struct {
 	// handler func(c *net.Conn)
 }
 
+func (tserver *TCPServer) Login(ctx context.Context, toServerD *data.ToServerData) (*data.ResponseFromServer, error) {
+
+	return service.LoginHandle(toServerD)
+}
+func (tserver *TCPServer) Home(ctx context.Context, toServerD *data.ToServerData) (*data.ResponseFromServer, error) {
+	return service.HomeHandle(toServerD)
+}
+func (tserver *TCPServer) Logout(ctx context.Context, toServerD *data.ToServerData) (*data.ResponseFromServer, error) {
+	return service.LogoutHandle(toServerD)
+}
+
+//--------------------------temp unsed-----------------------------
 func (tserver *TCPServer) Run() {
 	addr := Conf.Config.Connect.Tcphost + ":" + Conf.Config.Connect.Tcpport
 	tcpAddr, addErr := net.ResolveTCPAddr("tcp4", addr)
@@ -169,7 +183,7 @@ func (tserver *TCPServer) handleAll(conn net.Conn) {
 		fmt.Println("----------logout tcp get reader------------")
 	}
 
-	FunctionCode[toServerD.GetCtype()](conn, toServerD)
+	// FunctionCode[toServerD.GetCtype()](conn, toServerD)
 	// wg.Wait()
 	// tserver.TcpMutex.Unlock()
 
@@ -287,12 +301,37 @@ func init() {
 	// log.Println("dafas", Conf.Config)
 }
 func main() {
+
 	dao.InitDB()
+	tcpServer := &TCPServer{Proto: "tcp", Addr: Conf.Config.Connect.Tcpport}
+	s := grpc.NewServer()
+	data.RegisterAuthenticateServer(s, tcpServer)
+	addr := Conf.Config.Connect.Tcphost + ":" + Conf.Config.Connect.Tcpport
+	tcpAddr, addErr := net.ResolveTCPAddr("tcp4", addr)
+	if addErr != nil {
+		panic(addErr)
+	}
+	for {
+		ln, err := net.ListenTCP("tcp", tcpAddr)
+		// ln, err := net.Listen(tserver.Proto, ":"+tserver.Addr)
+
+		if err != nil {
+			fmt.Println("tcp listen failed:", err)
+		}
+		if errs := s.Serve(ln); errs != nil {
+			log.Fatalf("failed~~~~~~", errs)
+		}
+	}
+
+	// server:=&rpc.Server{}
+	// rpc.Register()
+	// // rpc.Server
+	// rpc.NewServer()
 	// dao.RedisInit()
 	fmt.Println("tcp start ", Conf.Config.Connect.Tcphost)
 	fmt.Println("tcp start ", Conf.Config.Connect.Tcpport)
-	tcpServer := &TCPServer{Proto: "tcp", Addr: Conf.Config.Connect.Tcpport}
-	tcpServer.Run()
+
+	// tcpServer.Run()
 
 }
 

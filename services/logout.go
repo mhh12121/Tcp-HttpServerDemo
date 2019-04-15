@@ -3,7 +3,6 @@ package service
 import (
 	"fmt"
 	"log"
-	"net"
 
 	dao "entry_task/DAO"
 
@@ -16,11 +15,11 @@ import (
 // }
 
 // func LogoutHandle(conn net.Conn, toServerD *data.ToServerData, wg *sync.WaitGroup) {
-func LogoutHandle(conn net.Conn, toServerD *data.ToServerData) {
+func LogoutHandle(toServerD *data.ToServerData) (*data.ResponseFromServer, error) {
 	// defer wg.Done()
 	log.Println("----------tcp logout---------------------")
 	tmpdata := &data.InfoWithUsername{}
-	tmpErr := proto.Unmarshal(toServerD.Httpdata, tmpdata)
+	tmpErr := proto.Unmarshal(toServerD.GetHttpdata(), tmpdata)
 	if tmpErr != nil {
 		fmt.Println("logout err:", tmpErr)
 		panic(tmpErr)
@@ -36,16 +35,16 @@ func LogoutHandle(conn net.Conn, toServerD *data.ToServerData) {
 	// gob.Register(new(data.ResponseFromServer))
 
 	returnValue := &data.ResponseFromServer{Success: proto.Bool(success), TcpData: nil}
-	returnValueData, rErr := proto.Marshal(returnValue)
-	if rErr != nil {
-		fmt.Println("logout marshal err:", rErr)
-		panic(rErr)
-	}
-	log.Println("------------tcp logouthandle returnValueData-------", returnValue)
-	_, writeErr := conn.Write(returnValueData)
-	log.Println("----------tcp logout write socket---------------------")
-	if writeErr != nil {
-		fmt.Println("logout write conn err,", writeErr)
-	}
-
+	// returnValueData, rErr := proto.Marshal(returnValue)
+	// if rErr != nil {
+	// 	fmt.Println("logout marshal err:", rErr)
+	// 	panic(rErr)
+	// }
+	// log.Println("------------tcp logouthandle returnValueData-------", returnValue)
+	// _, writeErr := conn.Write(returnValueData)
+	// log.Println("----------tcp logout write socket---------------------")
+	// if writeErr != nil {
+	// 	fmt.Println("logout write conn err,", writeErr)
+	// }
+	return returnValue, nil
 }
