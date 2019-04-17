@@ -32,5 +32,5 @@ END$$
 
 DELIMITER ;
 
-call BatchInsert(1,1000)
---  call BatchInsert(1, 10000000)
+-- call BatchInsert(1,1000)
+ call BatchInsert(1001, 1000000)

@@ -43,6 +43,7 @@ func init() {
 func InvalidCache(username string, token string) error {
 	//todo
 	// dont know the return value
+	log.Println("invalid redis")
 	errinfo := client.HSet(username, "valid", "0").Err()
 	if errinfo != nil {
 
@@ -54,6 +55,7 @@ func InvalidCache(username string, token string) error {
 
 // SetToken
 func SetToken(username string, token string, expiration int64) error {
+	log.Println(" setTOken username, token:", username, token)
 	err := client.Set(tokenFormat(username), token, time.Duration(expiration)).Err()
 	if err != nil {
 		return err
@@ -63,6 +65,7 @@ func SetToken(username string, token string, expiration int64) error {
 
 // CheckToken
 func CheckToken(username string, token string) (bool, error) {
+	log.Println("checktoken redis:", username, token)
 	val, err := client.Get(tokenFormat(username)).Result()
 	if err != nil {
 		return false, err

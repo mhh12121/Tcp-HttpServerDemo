@@ -35,11 +35,14 @@ func benchmarkLoginReq(serverAddr string, c int, isRan bool) (elapsed time.Durat
 			KeepAlive: 30 * time.Second,
 			DualStack: true,
 		}).DialContext,
+		// MaxConnsPerHost:       int(c),
 		MaxIdleConns:          int(c),
 		MaxIdleConnsPerHost:   int(c),
-		IdleConnTimeout:       90 * time.Second,
+		IdleConnTimeout:       90 * time.Second, //90
 		TLSHandshakeTimeout:   10 * time.Second,
 		ExpectContinueTimeout: 1 * time.Second,
+
+		// DisableKeepAlives:     true,
 	}
 
 	client := &http.Client{
@@ -65,10 +68,10 @@ func benchmarkLoginReq(serverAddr string, c int, isRan bool) (elapsed time.Durat
 		req, err := http.NewRequest("POST", serverAddr, bytes.NewBufferString(data.Encode()))
 		// req.AddCookie(&http.Cookie{Name: "username", Value: username, Expires: time.Now().Add(120 * time.Second), Path: "/"})
 		// req.AddCookie(&http.Cookie{Name: "token", Value: "test", Expires: time.Now().Add(120 * time.Second), Path: "/"})
-
+		// req.Header.Set("Connection", "close")
 		req.Header.Set("Content-Type", "application/x-www-form-urlencoded") // This makes it workparam=value
 		req.Header.Set("cache-control", "no-cache")
-		// req.Close = false
+		// req.Close = true
 		if err != nil {
 			log.Println(err)
 		}
@@ -76,6 +79,7 @@ func benchmarkLoginReq(serverAddr string, c int, isRan bool) (elapsed time.Durat
 		// <-readyGo
 		// time.Sleep(500 * time.Millisecond)
 		resp, err := client.Do(req)
+
 		if err != nil {
 			fmt.Println("times------------------> ", no)
 			log.Println("simulate send request err", req, "response", resp, "error", err)
@@ -84,12 +88,13 @@ func benchmarkLoginReq(serverAddr string, c int, isRan bool) (elapsed time.Durat
 		if err1 != nil {
 			log.Println("ioutil req err:", req, err1)
 		}
+
 		// fmt.Println("body:", body)
 		errclose := resp.Body.Close()
 		if errclose != nil {
 			panic(errclose)
 		}
-		defer resp.Body.Close()
+		// defer resp.Body.Close()
 		wg.Done()
 	}
 
@@ -194,10 +199,10 @@ func main() {
 	// benchmarkLoginReq()
 	//over 100 crash
 	// num := 500, int32(num)
-	concurrency := 1000
+	concurrency := 2000
 	// elapsed := BenchmarkWithHttp("http://localhost:8099/login", concurrency, true)
 	elapsed := benchmarkLoginReq("http://localhost:8099/login", concurrency, true)
 	fmt.Printf("\t- Concurrency(%v) - Cost(%s) - QPS(%v/sec)\n",
-		concurrency, elapsed, math.Ceil(float64(1000)/(float64(elapsed)/1000000000)))
+		concurrency, elapsed, math.Ceil(float64(concurrency)/(float64(elapsed)/1000000000)))
 
 }

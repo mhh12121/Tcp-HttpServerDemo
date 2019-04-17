@@ -1,25 +1,20 @@
 package main
 
 import (
-	"bufio"
 	"context"
 	"fmt"
-	"io"
 	"log"
 	"net"
 	"path"
 	"path/filepath"
 	"runtime"
-	"sync"
 
 	"entry_task/Conf"
 	dao "entry_task/DAO"
 	data "entry_task/Data"
-	Util "entry_task/Util"
 	service "entry_task/services"
 
 	_ "github.com/go-sql-driver/mysql"
-	"github.com/golang/protobuf/proto"
 	"google.golang.org/grpc"
 )
 
@@ -32,9 +27,9 @@ import (
 // }
 
 type TCPServer struct {
-	Proto    string
-	Addr     string
-	TcpMutex sync.Mutex
+	Proto string
+	Addr  string
+	// TcpMutex sync.Mutex
 	// ServiceMap map[string]func(net.Conn, *data.ToServerData)
 	// handler func(c *net.Conn)
 }
@@ -51,55 +46,55 @@ func (tserver *TCPServer) Logout(ctx context.Context, toServerD *data.ToServerDa
 }
 
 //--------------------------temp unsed-----------------------------
-func (tserver *TCPServer) Run() {
-	addr := Conf.Config.Connect.Tcphost + ":" + Conf.Config.Connect.Tcpport
-	tcpAddr, addErr := net.ResolveTCPAddr("tcp4", addr)
-	if addErr != nil {
-		panic(addErr)
-	}
-	ln, err := net.ListenTCP("tcp", tcpAddr)
-	// ln, err := net.Listen(tserver.Proto, ":"+tserver.Addr)
+// func (tserver *TCPServer) Run() {
+// 	addr := Conf.Config.Connect.Tcphost + ":" + Conf.Config.Connect.Tcpport
+// 	tcpAddr, addErr := net.ResolveTCPAddr("tcp4", addr)
+// 	if addErr != nil {
+// 		panic(addErr)
+// 	}
+// 	ln, err := net.ListenTCP("tcp", tcpAddr)
+// 	// ln, err := net.Listen(tserver.Proto, ":"+tserver.Addr)
 
-	if err != nil {
-		fmt.Println("tcp listen failed:", err)
-	}
+// 	if err != nil {
+// 		fmt.Println("tcp listen failed:", err)
+// 	}
 
-	for {
-		fmt.Println("block accept")
-		conn, err := ln.Accept()
+// 	for {
+// 		fmt.Println("block accept")
+// 		conn, err := ln.Accept()
 
-		if err != nil {
-			fmt.Println("tcp server connection failed:", err)
-			continue
-		}
-		log.Println("tcp listen loop", conn)
-		// go handleAll(conn)
-		go tserver.handleAll(conn)
+// 		if err != nil {
+// 			fmt.Println("tcp server connection failed:", err)
+// 			continue
+// 		}
+// 		log.Println("tcp listen loop", conn)
+// 		// go handleAll(conn)
+// 		// go tserver.handleAll(conn)
 
-	}
-}
+// 	}
+// }
 
 //some bugs here???//todo
-func ReadByteLoop(conn net.Conn) []byte {
-	connbuf := bufio.NewReader(conn)
-	b, _ := connbuf.ReadByte()
-	var msgData []byte
-	if connbuf.Buffered() > 0 {
+// func ReadByteLoop(conn net.Conn) []byte {
+// 	connbuf := bufio.NewReader(conn)
+// 	b, _ := connbuf.ReadByte()
+// 	var msgData []byte
+// 	if connbuf.Buffered() > 0 {
 
-		msgData = append(msgData, b)
-		for connbuf.Buffered() > 0 {
-			b, err := connbuf.ReadByte()
-			if err != nil {
-				fmt.Print("unreadable readbyte or null ", err)
-				break
+// 		msgData = append(msgData, b)
+// 		for connbuf.Buffered() > 0 {
+// 			b, err := connbuf.ReadByte()
+// 			if err != nil {
+// 				fmt.Print("unreadable readbyte or null ", err)
+// 				break
 
-			}
-			msgData = append(msgData, b)
-		}
+// 			}
+// 			msgData = append(msgData, b)
+// 		}
 
-	}
-	return msgData
-}
+// 	}
+// 	return msgData
+// }
 
 /*
 Use length description:
@@ -141,158 +136,160 @@ header(8bytes)        +length(4 bytes)=Data1's length   +  IF COMPRESSED(1 byte)
 // 	}
 
 // }
-func (tserver *TCPServer) handleAll(conn net.Conn) {
-	fmt.Println("handleall coming")
-	tmpBuffer := make([]byte, 0) //save splitted data(not included RealData but header,zipField)
-	// readerChannel := make(chan []byte, 1024) //realdata
-	// tserver.ReaderChannel = make(chan []byte, 1024)
-	// go reader(conn, readerChannel)
-	// defer close(readerChannel)
-	buffer := make([]byte, 1024)
-	// for { //continue read buffer from socket
-	// var wg sync.WaitGroup
-	// wg.Add(2)
-	size, err := conn.Read(buffer) //all data at once,but maybe the data is not complete
-	if err != nil {
-		if err == io.EOF {
-			fmt.Println("eof", err)
-			// break
-		}
-		fmt.Println("error why handleall", err)
-		return
-	}
-	// tmpBuffer = Util.Unpack(append(tmpBuffer, buffer[:size]...), readerChannel)
-	// tserver.TcpMutex.Lock()
+// func (tserver *TCPServer) handleAll(conn net.Conn) {
+// 	fmt.Println("handleall coming")
+// 	tmpBuffer := make([]byte, 0) //save splitted data(not included RealData but header,zipField)
+// 	// readerChannel := make(chan []byte, 1024) //realdata
+// 	// tserver.ReaderChannel = make(chan []byte, 1024)
+// 	// go reader(conn, readerChannel)
+// 	// defer close(readerChannel)
+// 	buffer := make([]byte, 1024)
+// 	// for { //continue read buffer from socket
+// 	// var wg sync.WaitGroup
+// 	// wg.Add(2)
+// 	size, err := conn.Read(buffer) //all data at once,but maybe the data is not complete
+// 	if err != nil {
+// 		if err == io.EOF {
+// 			fmt.Println("eof", err)
+// 			// break
+// 		}
+// 		fmt.Println("error why handleall", err)
+// 		return
+// 	}
+// 	// tmpBuffer = Util.Unpack(append(tmpBuffer, buffer[:size]...), readerChannel)
+// 	// tserver.TcpMutex.Lock()
 
-	tmpBuffer = Util.Unpack(append(tmpBuffer, buffer[:size]...)) //, readerChannel
-	// tserver.TcpMutex.Unlock()
+// 	tmpBuffer = Util.Unpack(append(tmpBuffer, buffer[:size]...)) //, readerChannel
+// 	// tserver.TcpMutex.Unlock()
 
-	// log.Println("readerchannel length after retrieve-----------------------", len(readerChannel))
-	//--------------------------------------not used channel below------------------------------
-	log.Println("----------tcp channel reader block here------------")
-	toServerD := &data.ToServerData{}
-	dataErr := proto.Unmarshal(tmpBuffer, toServerD)
-	fmt.Println("readchannel", toServerD)
-	// dataErr := proto.Unmarshal(buff[:int(size)], toServerD)
-	// dataErr := proto.Unmarshal(readData, toServerD)
-	if dataErr != nil {
-		fmt.Println("proto", dataErr)
-		panic(dataErr)
-	}
-	if toServerD.GetCtype() == Util.LOGOUTCODE {
-		fmt.Println("----------logout tcp get reader------------")
-	}
+// 	// log.Println("readerchannel length after retrieve-----------------------", len(readerChannel))
+// 	//--------------------------------------not used channel below------------------------------
+// 	log.Println("----------tcp channel reader block here------------")
+// 	toServerD := &data.ToServerData{}
+// 	dataErr := proto.Unmarshal(tmpBuffer, toServerD)
+// 	fmt.Println("readchannel", toServerD)
+// 	// dataErr := proto.Unmarshal(buff[:int(size)], toServerD)
+// 	// dataErr := proto.Unmarshal(readData, toServerD)
+// 	if dataErr != nil {
+// 		fmt.Println("proto", dataErr)
+// 		panic(dataErr)
+// 	}
+// 	if toServerD.GetCtype() == Util.LOGOUTCODE {
+// 		fmt.Println("----------logout tcp get reader------------")
+// 	}
 
-	// FunctionCode[toServerD.GetCtype()](conn, toServerD)
-	// wg.Wait()
-	// tserver.TcpMutex.Unlock()
+// 	// FunctionCode[toServerD.GetCtype()](conn, toServerD)
+// 	// wg.Wait()
+// 	// tserver.TcpMutex.Unlock()
 
-	// }
-	fmt.Println("handleall ___ end0--------------")
+// 	// }
+// 	fmt.Println("handleall ___ end0--------------")
 
-	// Msglength := make([]byte, 4)
+// 	// Msglength := make([]byte, 4)
 
-	// _, cerr := con.Read(Msglength)
-	// if cerr != nil {
-	// 	if cerr == io.EOF {
-	// 		fmt.Println("eof read ")
+// 	// _, cerr := con.Read(Msglength)
+// 	// if cerr != nil {
+// 	// 	if cerr == io.EOF {
+// 	// 		fmt.Println("eof read ")
 
-	// 	}
-	// 	fmt.Println("buferr", cerr)
-	// 	panic(cerr)
-	// 	// break
-	// }
+// 	// 	}
+// 	// 	fmt.Println("buferr", cerr)
+// 	// 	panic(cerr)
+// 	// 	// break
+// 	// }
 
-	// realSize := binary.BigEndian.Uint64(Msglength)
-	// fmt.Println("data size:", realSize)
-	// //-------------check compress or not----------
-	// checkCompress := make([]byte, 1)
-	// _, cerrCompress := con.Read(checkCompress)
-	// if cerrCompress != nil {
-	// 	if cerrCompress == io.EOF {
-	// 		fmt.Println("eof read ")
+// 	// realSize := binary.BigEndian.Uint64(Msglength)
+// 	// fmt.Println("data size:", realSize)
+// 	// //-------------check compress or not----------
+// 	// checkCompress := make([]byte, 1)
+// 	// _, cerrCompress := con.Read(checkCompress)
+// 	// if cerrCompress != nil {
+// 	// 	if cerrCompress == io.EOF {
+// 	// 		fmt.Println("eof read ")
 
-	// 	}
-	// 	fmt.Println("buferr", cerrCompress)
-	// 	panic(cerrCompress)
-	// 	// break
-	// }
-	// x := binary.BigEndian.Uint16(checkCompress)
-	// if Depress(x) {
+// 	// 	}
+// 	// 	fmt.Println("buferr", cerrCompress)
+// 	// 	panic(cerrCompress)
+// 	// 	// break
+// 	// }
+// 	// x := binary.BigEndian.Uint16(checkCompress)
+// 	// if Depress(x) {
 
-	// }
-	// //---------------decode real data-------------------
-	// realData := make([]byte, realSize)
-	// _, cerr2 := con.Read(realData)
-	// if cerr2 != nil {
-	// 	if cerr2 == io.EOF {
-	// 		fmt.Println("eof read ")
+// 	// }
+// 	// //---------------decode real data-------------------
+// 	// realData := make([]byte, realSize)
+// 	// _, cerr2 := con.Read(realData)
+// 	// if cerr2 != nil {
+// 	// 	if cerr2 == io.EOF {
+// 	// 		fmt.Println("eof read ")
 
-	// 	}
-	// 	fmt.Println("buferr", cerr2)
-	// 	panic(cerr2)
-	// 	// break
-	// }
+// 	// 	}
+// 	// 	fmt.Println("buferr", cerr2)
+// 	// 	panic(cerr2)
+// 	// 	// break
+// 	// }
 
-	// toServerD := &data.ToServerData{}
-	// dataErr := proto.Unmarshal(realData, toServerD)
-	// // dataErr := proto.Unmarshal(buff[:int(size)], toServerD)
-	// // dataErr := proto.Unmarshal(readData, toServerD)
-	// if dataErr != nil {
-	// 	fmt.Println("proto", dataErr)
-	// 	panic(dataErr)
-	// }
-	// FunctionCode[realSize](con, toServerD)
-	//according to Ctype to set the response
-	// switch *toServerD.Ctype {
-	// case "login":
-	// 	fmt.Println("login enter before")
-	// 	tserver.ServiceMap["login"](tserver.Con, toServerD)
-	// 	// service.LoginHandle(conn, *tmpdata)
-	// //Home tcp
-	// case "home":
-	// 	tserver.ServiceMap["home"](tserver.Con, toServerD)
+// 	// toServerD := &data.ToServerData{}
+// 	// dataErr := proto.Unmarshal(realData, toServerD)
+// 	// // dataErr := proto.Unmarshal(buff[:int(size)], toServerD)
+// 	// // dataErr := proto.Unmarshal(readData, toServerD)
+// 	// if dataErr != nil {
+// 	// 	fmt.Println("proto", dataErr)
+// 	// 	panic(dataErr)
+// 	// }
+// 	// FunctionCode[realSize](con, toServerD)
+// 	//according to Ctype to set the response
+// 	// switch *toServerD.Ctype {
+// 	// case "login":
+// 	// 	fmt.Println("login enter before")
+// 	// 	tserver.ServiceMap["login"](tserver.Con, toServerD)
+// 	// 	// service.LoginHandle(conn, *tmpdata)
+// 	// //Home tcp
+// 	// case "home":
+// 	// 	tserver.ServiceMap["home"](tserver.Con, toServerD)
 
-	// log.Println("home tcp decode data", tmpdata)
-	// service.HomeHandle(conn, tmpdata.GetUsername(), tmpdata.GetToken())
+// 	// log.Println("home tcp decode data", tmpdata)
+// 	// service.HomeHandle(conn, tmpdata.GetUsername(), tmpdata.GetToken())
 
-	// case "uploadAvatar":
-	// 	tmpdata := &data.InfoWithUsername{}
-	// 	tmpErr := proto.Unmarshal(toServerD.Httpdata, tmpdata)
-	// 	if tmpErr != nil {
-	// 		panic(tmpErr)
-	// 	}
+// 	// case "uploadAvatar":
+// 	// 	tmpdata := &data.InfoWithUsername{}
+// 	// 	tmpErr := proto.Unmarshal(toServerD.Httpdata, tmpdata)
+// 	// 	if tmpErr != nil {
+// 	// 		panic(tmpErr)
+// 	// 	}
 
-	// 	fmt.Println("tcp upload file decode data", tmpdata)
-	// 	service.UploadHandle(conn, tmpdata.GetUsername(), tmpdata.GetInfo(), tmpdata.GetToken())
-	// 	// uploadHandle(conn, , tmpdata.Info, tmpdata.Token)
+// 	// 	fmt.Println("tcp upload file decode data", tmpdata)
+// 	// 	service.UploadHandle(conn, tmpdata.GetUsername(), tmpdata.GetInfo(), tmpdata.GetToken())
+// 	// 	// uploadHandle(conn, , tmpdata.Info, tmpdata.Token)
 
-	// case "changeNickName":
-	// 	tmpdata := &data.InfoWithUsername{}
-	// 	tmpErr := proto.Unmarshal(toServerD.Httpdata, tmpdata)
-	// 	if tmpErr != nil {
-	// 		panic(tmpErr)
-	// 	}
-	// 	fmt.Println("tcp change nickname decode data ", tmpdata)
-	// 	service.ChangeNickNameHandle(conn, tmpdata.GetUsername(), string(tmpdata.GetInfo()[:]), tmpdata.GetToken())
+// 	// case "changeNickName":
+// 	// 	tmpdata := &data.InfoWithUsername{}
+// 	// 	tmpErr := proto.Unmarshal(toServerD.Httpdata, tmpdata)
+// 	// 	if tmpErr != nil {
+// 	// 		panic(tmpErr)
+// 	// 	}
+// 	// 	fmt.Println("tcp change nickname decode data ", tmpdata)
+// 	// 	service.ChangeNickNameHandle(conn, tmpdata.GetUsername(), string(tmpdata.GetInfo()[:]), tmpdata.GetToken())
 
-	// case "logout":
-	// 	tmpdata := &data.InfoWithUsername{}
-	// 	tmpErr := proto.Unmarshal(toServerD.Httpdata, tmpdata)
-	// 	if tmpErr != nil {
-	// 		fmt.Println("logout err:", tmpErr)
-	// 		panic(tmpErr)
-	// 	}
-	// 	fmt.Println("tcp change logout decode data ", tmpdata)
-	// 	service.LogoutHandle(conn, tmpdata.GetUsername(), tmpdata.GetToken())
-	// }
-	// //flush in case of appendding
-	// buff = make([]byte, 2048)
+// 	// case "logout":
+// 	// 	tmpdata := &data.InfoWithUsername{}
+// 	// 	tmpErr := proto.Unmarshal(toServerD.Httpdata, tmpdata)
+// 	// 	if tmpErr != nil {
+// 	// 		fmt.Println("logout err:", tmpErr)
+// 	// 		panic(tmpErr)
+// 	// 	}
+// 	// 	fmt.Println("tcp change logout decode data ", tmpdata)
+// 	// 	service.LogoutHandle(conn, tmpdata.GetUsername(), tmpdata.GetToken())
+// 	// }
+// 	// //flush in case of appendding
+// 	// buff = make([]byte, 2048)
 
-	// }
-}
+// 	// }
+// }
 
 func init() {
+
+	runtime.GOMAXPROCS(runtime.NumCPU())
 	_, fp, _, _ := runtime.Caller(0)
 	p := path.Dir(fp)
 	p = path.Dir(p)
@@ -304,32 +301,36 @@ func main() {
 
 	dao.InitDB()
 	tcpServer := &TCPServer{Proto: "tcp", Addr: Conf.Config.Connect.Tcpport}
+	fmt.Println("tcp start ", Conf.Config.Connect.Tcphost)
+	fmt.Println("tcp start ", Conf.Config.Connect.Tcpport)
 	s := grpc.NewServer()
 	data.RegisterAuthenticateServer(s, tcpServer)
+	defer s.Stop()
 	addr := Conf.Config.Connect.Tcphost + ":" + Conf.Config.Connect.Tcpport
 	tcpAddr, addErr := net.ResolveTCPAddr("tcp4", addr)
 	if addErr != nil {
 		panic(addErr)
 	}
-	for {
-		ln, err := net.ListenTCP("tcp", tcpAddr)
-		// ln, err := net.Listen(tserver.Proto, ":"+tserver.Addr)
+	//----grpc already set loop listen------------------
+	// for {
+	log.Println("start listen loop tcp:")
+	ln, err := net.ListenTCP("tcp", tcpAddr)
+	// ln, err := net.Listen(tserver.Proto, ":"+tserver.Addr)
 
-		if err != nil {
-			fmt.Println("tcp listen failed:", err)
-		}
-		if errs := s.Serve(ln); errs != nil {
-			log.Fatalf("failed~~~~~~", errs)
-		}
+	if err != nil {
+		fmt.Println("tcp listen failed:", err)
 	}
+	if errs := s.Serve(ln); errs != nil {
+		log.Fatalf("grpc serve failed~~~~~~ %v", errs)
+	}
+
+	// }
 
 	// server:=&rpc.Server{}
 	// rpc.Register()
 	// // rpc.Server
 	// rpc.NewServer()
 	// dao.RedisInit()
-	fmt.Println("tcp start ", Conf.Config.Connect.Tcphost)
-	fmt.Println("tcp start ", Conf.Config.Connect.Tcpport)
 
 	// tcpServer.Run()
 

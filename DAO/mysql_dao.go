@@ -37,7 +37,7 @@ func InitDB() {
 	log.Println("das", ad)
 	db, err = sql.Open("mysql", ad)
 	checkErr(err)
-	db.SetMaxOpenConns(1000)
+	db.SetMaxOpenConns(2000)
 	db.SetMaxIdleConns(1000)
 	// defer db.Close()
 	err = db.Ping()

@@ -23,7 +23,7 @@ func LoginHandle(toServerD *data.ToServerData) (*data.ResponseFromServer, error)
 		fmt.Println("login err:", tmpErr)
 		panic(tmpErr)
 	}
-
+	log.Println("tcp login username:" + tmpdata.GetUsername())
 	// log.Println("login tcp decode data", tmpdata)
 	//get remote Addr
 	// remoteAddr := conn.RemoteAddr().String()
@@ -74,7 +74,7 @@ func LoginHandle(toServerD *data.ToServerData) (*data.ResponseFromServer, error)
 
 	//login fail
 	if !success || errorcheck != nil {
-		log.Println("password wrong! any error?:", errorcheck)
+		log.Println("password wrong! usename:", tmpdata.GetUsername())
 
 		returnValue := &data.ResponseFromServer{Success: proto.Bool(false), TcpData: nil}
 		//--------gRPC no need to marshal----------------
@@ -97,7 +97,6 @@ func LoginHandle(toServerD *data.ToServerData) (*data.ResponseFromServer, error)
 	if tokenerr != nil {
 		log.Println("login save cache err", tokenerr)
 	}
-	// data.FailSafeCheckErr("login save cache err", tokenerr)
 	//login success
 	log.Println("login handle tcp")
 

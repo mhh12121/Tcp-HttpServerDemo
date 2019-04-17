@@ -26,7 +26,7 @@ const (
 	UploadPath      = "../images/"
 )
 
-var TokenExpires = int64(1e11)
+var TokenExpires = int64(1e12)
 var CookieExpires = time.Now().Add(1 * time.Hour)
 
 var ErrCode map[int]string = map[int]string{
