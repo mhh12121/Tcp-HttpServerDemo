@@ -46,12 +46,13 @@ func BenchmarkWithHttp(serverAddr string, c int, isRan bool) time.Duration {
 			// handle error
 		}
 
-		defer resp.Body.Close()
+		// defer resp.Body.Close()
 		_, errx := ioutil.ReadAll(resp.Body)
 		if errx != nil {
 			panic(errx)
 			// handle error
 		}
+		resp.Body.Close()
 		// fmt.Println(body)
 		wg.Done()
 	}

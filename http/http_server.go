@@ -13,6 +13,7 @@ import (
 	"os"
 	"path"
 	"runtime"
+	"time"
 
 	data "entry_task/Data"
 	Util "entry_task/Util"
@@ -41,9 +42,7 @@ func main() {
 	log.Println("log path", p)
 
 	Conf.LoadConf(p + "/Conf/config.json")
-	// var err error
-	// tcpconn, err = net.Dial("tcp", Util.Tcpaddress+":"+Util.Tcpport)
-	// tcpconn.SetReadDeadline(time.Now().Add(Util.TimeoutDuration))
+
 	addr := Conf.Config.Connect.Tcphost + ":" + Conf.Config.Connect.Tcpport
 	tcpAddr, addErr := net.ResolveTCPAddr("tcp4", addr)
 	if addErr != nil {
@@ -77,7 +76,13 @@ func main() {
 	// http.HandleFunc("/Home/change", changeNickNameHandler)
 	http.HandleFunc("/Home/logout", logoutHandler)
 	http.HandleFunc("/test", testHandler)
-	errhttp := http.ListenAndServe(Conf.Config.Connect.Httphost+":"+Conf.Config.Connect.Httpport, nil)
+	httpServer := &http.Server{
+		ReadTimeout:  5 * time.Second,
+		WriteTimeout: 10 * time.Second,
+		Addr:         Conf.Config.Connect.Httphost + ":" + Conf.Config.Connect.Httpport,
+	}
+	errhttp := httpServer.ListenAndServe()
+	// errhttp := http.ListenAndServe(, nil)
 	log.Fatal(errhttp)
 
 }
@@ -87,13 +92,6 @@ func testHandler(w http.ResponseWriter, r *http.Request) {
 		t.Execute(w, nil)
 	}
 
-}
-
-//generate simple token
-func GenerateToken(len int) string {
-	b := make([]byte, len)
-	rand.Read(b)
-	return fmt.Sprintf("%x", b)
 }
 
 //some bugs here???//todo
@@ -117,6 +115,39 @@ func ReadByteLoop(conn net.Conn) []byte {
 	}
 	return msgData
 }
+func readerHttp(conn net.Conn, readerChannel chan []byte) {
+
+	log.Println("readerchannel begin length-----------------------", len(readerChannel))
+	// realData,ok := <-readerChannel
+	// if ok{
+	// 	log.Println("------------already pass value---------------------------------")
+	// }
+	// log.Println("readerchannel now----------", readerChannel)
+	select {
+	case realData := <-readerChannel:
+		{
+			log.Println("readerchannel length after retrieve-----------------------", len(readerChannel))
+			log.Println("----------tcp channel reader block here------------")
+			toServerD := &data.ToServerData{}
+			dataErr := proto.Unmarshal(realData, toServerD)
+			fmt.Println("readchannel", toServerD)
+
+			if dataErr != nil {
+				fmt.Println("proto", dataErr)
+				panic(dataErr)
+			}
+			if toServerD.GetCtype() == Util.LOGOUTCODE {
+				fmt.Println("----------logout tcp get reader------------")
+			}
+
+			FunctionCode[toServerD.GetCtype()](conn, toServerD)
+
+		}
+		// case <-time.After(time.Second * 10):
+		// 	fmt.Println("10 seconds after reader channel")
+	}
+
+}
 
 //get response from server
 func readServer(w http.ResponseWriter, r *http.Request, tcpconn net.Conn, ctype int32) (interface{}, bool) {
@@ -127,6 +158,7 @@ func readServer(w http.ResponseWriter, r *http.Request, tcpconn net.Conn, ctype 
 	// defer tcpconn.Close()
 	// <-readchan
 	// var wg sync.WaitGroup
+	reader
 	fmt.Println("pass readserver")
 	// wg.Add(1)
 	switch ctype {
@@ -501,6 +533,7 @@ func loginHandler(w http.ResponseWriter, r *http.Request) {
 
 		// for {
 		// time.Sleep(2 * time.Second)
+
 		_, successlogin := readServer(w, r, tcpconn, Util.LOGINCODE)
 		// _, successlogin := readServer(w, r, globalcon, Util.LOGINCODE)
 		//success login
@@ -761,4 +794,11 @@ func checkAndCreateFileName(oldName string) (newName string, isLegal bool) {
 		isLegal = true
 	}
 	return newName, isLegal
+}
+
+//generate simple token
+func GenerateToken(len int) string {
+	b := make([]byte, len)
+	rand.Read(b)
+	return fmt.Sprintf("%x", b)
 }
