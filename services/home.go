@@ -31,20 +31,9 @@ func HomeHandle(toServerD *data.ToServerData) (*data.ResponseFromServer, error) 
 	//token not exists or not correct
 	if !exists || errtoken != nil {
 		log.Println("home checktoken cache err", errtoken)
-		// gob.Register(new(data.ResponseFromServer))
 
 		returnValue := &data.ResponseFromServer{Success: proto.Bool(false), TcpData: nil}
-		// returnValueData, rErr := proto.Marshal(returnValue)
-		// if rErr != nil {
-		// 	panic(rErr)
-		// }
-		// packHttp := Util.Pack(Util.PACK_CLIENT, returnValueData, false)
-		// _, writeErr := conn.Write(packHttp)
 
-		// // _, writeErr :=conn.Write(returnValueData)
-		// if writeErr != nil {
-		// 	panic(writeErr)
-		// }
 		return returnValue, nil
 	}
 
@@ -58,24 +47,13 @@ func HomeHandle(toServerD *data.ToServerData) (*data.ResponseFromServer, error) 
 	//
 	if ok && err == nil {
 		log.Println("tcp home handle cache get info okay", *user)
-		// gob.Register(new(data.RealUser))
+
 		userData, userErr := proto.Marshal(user)
 		if userErr != nil {
 			panic(userErr)
 		}
 		tohttp := &data.ResponseFromServer{Success: proto.Bool(true), TcpData: userData}
-		// tohttpData, toHttpErr := proto.Marshal(tohttp)
-		// if toHttpErr != nil {
-		// 	fmt.Println("tohttperr:", toHttpErr)
-		// 	panic(toHttpErr)
-		// }
-		// packHttp := Util.Pack(Util.PACK_CLIENT, tohttpData, false)
-		// _, writeErr := conn.Write(packHttp)
-		// // _, writeErr := conn.Write(tohttpData)
-		// if writeErr != nil {
-		// 	fmt.Println("home tcp write err")
-		// 	panic(writeErr)
-		// }
+
 		return tohttp, nil
 	}
 	log.Println("-----------not at redis,go to mysql---------------------")
@@ -92,27 +70,14 @@ func HomeHandle(toServerD *data.ToServerData) (*data.ResponseFromServer, error) 
 
 		//save cache success
 		//here how
-		// if successCache {
 
 		userdbData, userdbErr := proto.Marshal(userdb)
 		if userdbErr != nil {
 			panic(userdbErr)
 		}
 		tohttp := &data.ResponseFromServer{Success: proto.Bool(true), TcpData: userdbData}
-		// tohttpData, toHttpErr := proto.Marshal(tohttp)
-		// if toHttpErr != nil {
-		// 	fmt.Println("tohttperr:", toHttpErr)
-		// 	panic(toHttpErr)
-		// }
-		// packHttp := Util.Pack(Util.PACK_CLIENT, tohttpData, false)
-		// _, writeErr := conn.Write(packHttp)
-		// // _, writeErr := conn.Write(tohttpData)
-		// if writeErr != nil {
-		// 	fmt.Println("home write conn err,", writeErr)
-		// }
 
 		return tohttp, nil
-		// }
 
 	}
 

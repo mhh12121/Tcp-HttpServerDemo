@@ -136,12 +136,7 @@ func logoutHandler(w http.ResponseWriter, r *http.Request) {
 		//todo
 		log.SetFlags(log.LstdFlags | log.Lshortfile)
 		fmt.Println("----------------logout-------------------")
-		// tcpconn, errget := connpool.Get()
-		// defer tcpconn.Close()
-		// if errget != nil {
-		// 	panic(errget)
-		// }
-		// log.Println("logout pool length---------------", connpool.Len())
+
 		conn, err := grpc.Dial(addr, grpc.WithInsecure())
 		if err != nil {
 			log.Fatalf("logout client fail", err)
@@ -168,16 +163,7 @@ func logoutHandler(w http.ResponseWriter, r *http.Request) {
 		}
 
 		tmp := &data.ToServerData{Ctype: proto.Int32(Util.LOGOUTCODE), Httpdata: httpData}
-		// tmpdata, tErr := proto.Marshal(tmp)
-		// if tErr != nil {
-		// 	panic(tErr)
-		// }
-		// wrappedSend := Util.Pack(Util.PACK_CLIENT, tmpdata, false)
-		// // _, writeErr := globalcon.Write(wrappedSend)
-		// _, writeErr := tcpconn.Write(wrappedSend)
-		// if writeErr != nil {
-		// 	panic(writeErr)
-		// }
+
 		// for {
 		//go to tcp to invalid the cache
 		ctx, cancel := context.WithTimeout(context.Background(), time.Second)
@@ -226,6 +212,12 @@ func logoutHandler(w http.ResponseWriter, r *http.Request) {
 		// }
 	}
 }
+
+// func do(i int) func(http.ResponseWriter, *http.Request) {
+// 	return func(w http.ResponseWriter, r *http.Request) {
+
+// 	}
+// }
 
 //for login Get render
 func loginHandler(w http.ResponseWriter, r *http.Request) {
@@ -298,18 +290,12 @@ func loginHandler(w http.ResponseWriter, r *http.Request) {
 	//login authentication
 	if r.Method == http.MethodPost {
 
-		// fmt.Println("tcp conn and http conn", tcpconn.RemoteAddr().String(), tcpconn.LocalAddr().String())
-		// fmt.Println("tcp conn and http conn", globalcon.RemoteAddr().String(), globalcon.LocalAddr().String())
 		conn, err := grpc.Dial(addr, grpc.WithInsecure())
 		if err != nil {
 			log.Fatalf("grpc login fail: %v", err)
 		}
 		defer conn.Close()
-		// conn, err := connpool.Get()
-		// if err != nil {
-		// 	log.Fatalf("grpc login fail: %v", err)
-		// }
-		// defer connpool.Put(conn)
+
 		c := data.NewAuthenticateClient(conn)
 		ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 		defer cancel()
@@ -336,26 +322,7 @@ func loginHandler(w http.ResponseWriter, r *http.Request) {
 		if errR != nil {
 			log.Fatalf("login response failed %v", errR)
 		}
-		// tmpdataSend, _ := proto.Marshal(tmpdata)
-		// wrappedSend := Util.Pack(Util.PACK_CLIENT, tmpdataSend, false)
-		// // fmt.Println("encode wrappedsend pwd:", wrappedSend)
-		// fmt.Println("encode wrappedsend length", len(wrappedSend))
-		// _, err := tcpconn.Write(wrappedSend)
-		// // _, err := globalcon.Write(wrappedSend)
-		// if err != nil {
-		// 	fmt.Println("login write err:", err)
-		// 	panic(err)
-		// }
-
 		successlogin := res.GetSuccess()
-		// //loop to listen from server
-
-		// for {
-
-		// _, successlogin := readServer(w, r, tcpconn, Util.LOGINCODE)
-		// _, successlogin := readServer(w, r, globalcon, Util.LOGINCODE)
-		//success login
-		// tcpconn.Close()
 		if successlogin {
 			fmt.Println("login success!!http")
 			//, MaxAge: Util.CookieExpires
@@ -372,9 +339,6 @@ func loginHandler(w http.ResponseWriter, r *http.Request) {
 		}
 		//wrong password
 		http.Redirect(w, r, "/login", http.StatusFound)
-
-		// w.WriteHeader(http.StatusForbidden)
-		// w.Write([]byte(Util.ResWrongStr))
 		return
 
 		// }
@@ -407,17 +371,9 @@ func homeHandler(w http.ResponseWriter, r *http.Request) {
 			log.Fatalf("home getfrom server fail", err)
 		}
 		defer conn.Close()
-		// conn, err := connpool.Get()
-		// if err != nil {
-		// 	log.Fatalf("grpc login fail: %v", err)
-		// }
-		// defer connpool.Put(conn)
+
 		c := data.NewAuthenticateClient(conn)
-		// tcpconn, errget := connpool.Get()
-		// defer tcpconn.Close()
-		// if errget != nil {
-		// 	panic(errget)
-		// }
+
 		log.Println("home rendering")
 
 		//send to tcp server
@@ -427,26 +383,7 @@ func homeHandler(w http.ResponseWriter, r *http.Request) {
 			panic(terr)
 		}
 		tmp := &data.ToServerData{Ctype: proto.Int32(Util.HOMECODE), Httpdata: tokenwithusernameData}
-		// tmpData, tmpErr := proto.Marshal(tmp)
-		// if tmpErr != nil {
-		// 	panic(tmpErr)
-		// }
-		// fmt.Println("http cookie ", cookieuser.Value)
-		//----------------wrap handle code-------------
-		// wrappedSend := make([]byte, len(tmpData))
-		// binary.BigEndian.PutUint32(wrappedSend, HOMECODE)
-		// //----------------wrap compress code-------------
-		// compressMark := make([]byte, 1)
-		// binary.BigEndian.PutUint16(compressMark, NOCOMPRESS)
-		// wrappedSend := Util.Pack(Util.PACK_CLIENT, tmpData, false)
-		// _, werr := tcpconn.Write(wrappedSend)
-		// // _, werr := globalcon.Write(wrappedSend)
-		// if werr != nil {
-		// 	panic(werr)
-		// }
-		// log.Println("home render loop", tmpData)
-		// datar, successHome := readServer(w, r, tcpconn, Util.HOMECODE)
-		// datar, successHome := readServer(w, r, globalcon, Util.HOMECODE)
+
 		ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 		defer cancel()
 		res, errR := c.Home(ctx, tmp)

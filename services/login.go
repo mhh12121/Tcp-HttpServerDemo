@@ -46,25 +46,6 @@ func LoginHandle(toServerD *data.ToServerData) (*data.ResponseFromServer, error)
 		// gob.Register(new(data.ResponseFromServer))
 
 		returnValue := &data.ResponseFromServer{Success: proto.Bool(true), TcpData: nil}
-		// returnValueData, errReturn := proto.Marshal(returnValue)
-		// if errReturn != nil {
-		// 	fmt.Println("proto login marshal:", errReturn)
-		// 	panic(errReturn)
-		// }
-
-		// packHttp := Util.Pack(Util.PACK_CLIENT, returnValueData, false)
-		// _, writeErr := conn.Write(packHttp)
-		// if writeErr != nil {
-		// 	fmt.Println("write login:", writeErr)
-		// 	panic(writeErr)
-		// }
-		//-------------old ---------------------
-		// encoder := gob.NewEncoder(conn)
-		// errreturn := encoder.Encode(returnValue)
-		// if errreturn != nil {
-		// 	log.Println("login auth encode direct from cache err", errreturn)
-		// }
-		//-----------------------------------
 
 		return returnValue, nil
 	}
@@ -78,16 +59,6 @@ func LoginHandle(toServerD *data.ToServerData) (*data.ResponseFromServer, error)
 
 		returnValue := &data.ResponseFromServer{Success: proto.Bool(false), TcpData: nil}
 		//--------gRPC no need to marshal----------------
-		// returnValueData, errReturn := proto.Marshal(returnValue)
-		// if errReturn != nil {
-		// 	panic(errReturn)
-		// }
-		// packHttp := Util.Pack(Util.PACK_CLIENT, returnValueData, false)
-		// fmt.Println("login pack:----------------", packHttp)
-		// _, writeErr := conn.Write(packHttp)
-		// if writeErr != nil {
-		// 	panic(writeErr)
-		// }
 
 		return returnValue, nil
 	}
@@ -102,19 +73,6 @@ func LoginHandle(toServerD *data.ToServerData) (*data.ResponseFromServer, error)
 
 	returnValue := &data.ResponseFromServer{Success: proto.Bool(true), TcpData: nil}
 	//--------gRPC no need to marshal----------------
-	// returnValueData, errReturn := proto.Marshal(returnValue)
-	// if errReturn != nil {
-	// 	fmt.Println("errReturn:", errReturn)
-	// 	panic(errReturn)
-	// }
-	// packHttp := Util.Pack(Util.PACK_CLIENT, returnValueData, false)
-	// _, writeErr := conn.Write(packHttp)
-	// log.Println("login handle tcp write next")
-	// _, writeErr := conn.Write(returnValueData)
-	// if writeErr != nil {
-	// 	fmt.Println("login writeErr", writeErr)
-	// 	panic(writeErr)
-	// }
 
 	return returnValue, nil
 }
