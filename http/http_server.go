@@ -3,7 +3,7 @@ package main
 import (
 	"context"
 	"encoding/json"
-	"entry_task/Conf"
+	"Tcp-HttpServerDemo/Conf"
 	"fmt"
 	"html/template"
 	"log"
@@ -14,13 +14,13 @@ import (
 	"runtime"
 	"time"
 
-	data "entry_task/Data"
-	Util "entry_task/Util"
+	data "Tcp-HttpServerDemo/Data"
+	Util "Tcp-HttpServerDemo/Util"
 
 	"github.com/golang/protobuf/proto"
 	"google.golang.org/grpc"
 	// pool "gopkg.in/fatih/pool.v2"
-	// pool "entry_task/ServerPool"
+	// pool "Tcp-HttpServerDemo/ServerPool"
 )
 
 // var connpool *pool.GRPCPool
